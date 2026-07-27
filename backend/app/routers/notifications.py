@@ -63,6 +63,25 @@ def test_notify(payload: NotifyTestIn, user: User = Depends(get_current_user)):
     return {"ok": True}
 
 
+class WecomCheckIn(BaseModel):
+    config: dict | None = None
+
+
+@router.post("/wecom/check")
+def wecom_check(payload: WecomCheckIn, user: User = Depends(get_current_user)):
+    """校验企业微信自建应用配置：拉取 access_token 并读取应用信息（应用名 / 可见范围）。"""
+    conf = (payload.config or {}) or notify.load_config(user).get("wecom", {})
+    if (conf.get("mode") or "webhook") != "app":
+        raise HTTPException(400, "该校验仅适用于「自建应用」模式")
+    try:
+        info = notify.wecom_agent_info(conf)
+    except Exception as e:  # noqa: BLE001
+        activity.log("notify.wecom.check", f"企业微信应用校验失败：{e}", user=user, level="error")
+        raise HTTPException(502, str(e))
+    activity.log("notify.wecom.check", f"校验企业微信应用「{info.get('name')}」成功", user=user)
+    return {"ok": True, "agent": info}
+
+
 def _tg_args(user: User, override_token: str | None = None) -> dict:
     return {
         "token": override_token or user.telegram_bot_token,

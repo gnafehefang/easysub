@@ -32,6 +32,7 @@ from app.services import telegram
 _SECRET_FIELDS = {
     "telegram": ["bot_token"], "feishu": ["app_secret"], "qq": ["app_secret"],
     "email": ["password"], "pushplus": ["token"], "serverchan": ["sendkey"],
+    "wecom": ["secret"],
     "dingtalk": ["secret"], "ntfy": ["token"], "gotify": ["token"], "webhook": ["secret"],
 }
 
@@ -46,7 +47,11 @@ _DEFAULTS = {
               "password": "", "from": "", "to": ""},
     "pushplus": {"enabled": False, "token": "", "topic": "", "channel": "wechat"},
     "serverchan": {"enabled": False, "sendkey": ""},
-    "wecom": {"enabled": False, "url": ""},
+    # 企业微信：mode=webhook 群机器人；mode=app 自建应用（企业ID+应用ID+Secret，可走 API 代理）
+    "wecom": {"enabled": False, "mode": "webhook", "url": "",
+              "corp_id": "", "agent_id": "", "secret": "", "proxy_base": "",
+              "to_user": "@all", "to_party": "", "to_tag": "",
+              "msg_type": "text", "card_url": ""},
     "dingtalk": {"enabled": False, "url": "", "secret": ""},
     "discord": {"enabled": False, "url": ""},
     "slack": {"enabled": False, "url": ""},
@@ -314,16 +319,177 @@ def _send_serverchan(conf: dict, subject: str, text: str) -> None:
             raise RuntimeError(f"Server酱发送失败：{r.text}")
 
 
-def _send_wecom(conf: dict, subject: str, text: str) -> None:
-    url = conf.get("url")
-    if not url:
-        raise RuntimeError("企业微信未配置机器人 Webhook")
-    body_text = f"{subject}\n\n{text}" if subject else text
+# ---- 企业微信（群机器人 / 自建应用） --------------------------------------- #
+WECOM_DEFAULT_BASE = "https://qyapi.weixin.qq.com"
+# 自建应用的 access_token 缓存：key -> (token, 过期时间戳)。企业微信对 gettoken 有频率限制，
+# 且同一 Secret 重复获取会顶掉旧 token，因此必须缓存复用（官方有效期 7200s）。
+_WECOM_TOKENS: dict[str, tuple[str, float]] = {}
+# 需要重新获取 token 的错误码：40014 不合法的 access_token / 42001 已过期 / 41001 缺少 token
+_WECOM_TOKEN_ERRS = {40014, 42001, 41001}
+
+
+def _trunc_bytes(text: str, limit: int) -> str:
+    """按 UTF-8 字节数截断（企业微信 text 上限 2048B、markdown 4096B、textcard 描述 512B）。"""
+    raw = (text or "").encode("utf-8")
+    if len(raw) <= limit:
+        return text or ""
+    return raw[: limit - 3].decode("utf-8", "ignore") + "..."
+
+
+def wecom_api_base(conf: dict) -> str:
+    """API 代理地址；留空用官方域名。容忍用户把 /cgi-bin 一起粘进来。"""
+    base = (conf.get("proxy_base") or "").strip().rstrip("/")
+    if not base:
+        return WECOM_DEFAULT_BASE
+    if not base.startswith(("http://", "https://")):
+        base = "https://" + base
+    if base.endswith("/cgi-bin"):
+        base = base[: -len("/cgi-bin")]
+    return base
+
+
+def wecom_token(conf: dict, force: bool = False) -> str:
+    """获取（并缓存）自建应用 access_token。"""
+    corp_id = (conf.get("corp_id") or "").strip()
+    secret = (conf.get("secret") or "").strip()
+    if not corp_id or not secret:
+        raise RuntimeError("企业微信自建应用未配置企业ID / 应用Secret")
+    base = wecom_api_base(conf)
+    key = f"{base}|{corp_id}|{hashlib.sha256(secret.encode()).hexdigest()[:16]}"
+    hit = _WECOM_TOKENS.get(key)
+    if hit and not force and hit[1] > time.time():
+        return hit[0]
     with httpx.Client(timeout=15) as c:
-        r = c.post(url, json={"msgtype": "text", "text": {"content": body_text}})
+        r = c.get(f"{base}/cgi-bin/gettoken",
+                  params={"corpid": corp_id, "corpsecret": secret})
         r.raise_for_status()
-        if r.json().get("errcode", 0) != 0:
-            raise RuntimeError(f"企业微信发送失败：{r.text}")
+        data = r.json()
+    token = data.get("access_token")
+    if data.get("errcode", 0) != 0 or not token:
+        raise RuntimeError(
+            f"企业微信获取 access_token 失败：{data.get('errcode')} {data.get('errmsg')}"
+            "（请检查企业ID / 应用Secret，以及是否已在「企业可信IP」放行服务器出口 IP）"
+        )
+    ttl = int(data.get("expires_in") or 7200)
+    _WECOM_TOKENS[key] = (token, time.time() + max(60, ttl - 200))  # 提前 200s 续期
+    return token
+
+
+def wecom_agent_info(conf: dict) -> dict:
+    """读取自建应用信息（校验配置用）：返回应用名、可见范围人数等。"""
+    agent_id = str(conf.get("agent_id") or "").strip()
+    if not agent_id:
+        raise RuntimeError("企业微信自建应用未配置应用ID（AgentId）")
+    base = wecom_api_base(conf)
+    for attempt in (0, 1):
+        token = wecom_token(conf, force=bool(attempt))
+        with httpx.Client(timeout=15) as c:
+            r = c.get(f"{base}/cgi-bin/agent/get",
+                      params={"access_token": token, "agentid": agent_id})
+            r.raise_for_status()
+            data = r.json()
+        code = data.get("errcode", 0)
+        if code in _WECOM_TOKEN_ERRS and attempt == 0:
+            continue
+        if code != 0:
+            raise RuntimeError(f"企业微信读取应用失败：{code} {data.get('errmsg')}")
+        allow = data.get("allow_userinfos") or {}
+        return {
+            "agentid": data.get("agentid"),
+            "name": data.get("name"),
+            "square_logo_url": data.get("square_logo_url"),
+            "users": len(allow.get("user") or []),
+            "parties": len((data.get("allow_partys") or {}).get("partyid") or []),
+            "tags": len((data.get("allow_tags") or {}).get("tagid") or []),
+        }
+    raise RuntimeError("企业微信读取应用失败：access_token 反复失效")
+
+
+def _wecom_payload(conf: dict, subject: str, text: str) -> dict:
+    """按消息类型构造消息体（text / markdown / textcard）。"""
+    msg_type = (conf.get("msg_type") or "text").strip()
+    body_text = f"{subject}\n\n{text}" if subject else text
+    if msg_type == "markdown":
+        return {"msgtype": "markdown",
+                "markdown": {"content": _trunc_bytes(body_text, 4096)}}
+    if msg_type == "textcard":
+        return {"msgtype": "textcard", "textcard": {
+            "title": _trunc_bytes(subject or "省心订阅 EasySub", 128),
+            "description": _trunc_bytes(text, 512),
+            "url": conf.get("card_url") or "https://github.com/suyijun8182/easysub",
+            "btntxt": "查看详情",
+        }}
+    return {"msgtype": "text", "text": {"content": _trunc_bytes(body_text, 2048)}}
+
+
+def _send_wecom_robot(conf: dict, subject: str, text: str) -> None:
+    """群机器人 Webhook 模式。"""
+    url = (conf.get("url") or "").strip()
+    if not url:
+        raise RuntimeError("企业微信未配置群机器人 Webhook")
+    payload = _wecom_payload(conf, subject, text)
+    if payload["msgtype"] == "textcard":  # 群机器人不支持 textcard，降级为 text
+        payload = {"msgtype": "text",
+                   "text": {"content": _trunc_bytes(f"{subject}\n\n{text}" if subject else text, 2048)}}
+    with httpx.Client(timeout=15) as c:
+        r = c.post(url, json=payload)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("errcode", 0) != 0:
+            raise RuntimeError(f"企业微信群机器人发送失败：{data.get('errcode')} {data.get('errmsg')}")
+
+
+def _send_wecom_app(conf: dict, subject: str, text: str) -> None:
+    """自建应用模式（企业ID + 应用ID + Secret），与 CMSHelp「企业微信配置」一致。"""
+    agent_id = str(conf.get("agent_id") or "").strip()
+    if not agent_id:
+        raise RuntimeError("企业微信自建应用未配置应用ID（AgentId）")
+    to_user = (conf.get("to_user") or "").strip()
+    to_party = (conf.get("to_party") or "").strip()
+    to_tag = (conf.get("to_tag") or "").strip()
+    if not (to_user or to_party or to_tag):
+        to_user = "@all"  # 三者全空则发给应用可见范围内全部成员
+    payload = _wecom_payload(conf, subject, text)
+    payload.update({"touser": to_user, "toparty": to_party, "totag": to_tag,
+                    "agentid": int(agent_id) if agent_id.isdigit() else agent_id,
+                    "safe": 0, "enable_duplicate_check": 0})
+    base = wecom_api_base(conf)
+    for attempt in (0, 1):  # token 失效时强制刷新重试一次
+        token = wecom_token(conf, force=bool(attempt))
+        with httpx.Client(timeout=15) as c:
+            r = c.post(f"{base}/cgi-bin/message/send",
+                       params={"access_token": token}, json=payload)
+            r.raise_for_status()
+            data = r.json()
+        code = data.get("errcode", 0)
+        if code in _WECOM_TOKEN_ERRS and attempt == 0:
+            continue
+        if code != 0:
+            hint = ""
+            if code == 81013:
+                hint = "（接收人不在应用可见范围内，请到「应用管理→可见范围」添加成员）"
+            elif code in (60020, 301014):
+                hint = "（服务器 IP 未在「企业可信IP」白名单中，或需要配置 API 代理）"
+            elif code == 40056:
+                hint = "（应用ID AgentId 不正确）"
+            raise RuntimeError(f"企业微信发送失败：{code} {data.get('errmsg')}{hint}")
+        # errcode=0 但接收人被剔除时，消息实际没人收到，需要报错而不是假装成功
+        invalid = [str(data.get(k) or "").strip("| ") for k in
+                   ("invaliduser", "invalidparty", "invalidtag")]
+        invalid = [v for v in invalid if v]
+        if invalid:
+            raise RuntimeError(
+                f"企业微信部分接收人无效：{' / '.join(invalid)}"
+                "（请核对成员 UserID，并确认其在应用可见范围内）"
+            )
+        return
+
+
+def _send_wecom(conf: dict, subject: str, text: str) -> None:
+    if (conf.get("mode") or "webhook") == "app":
+        _send_wecom_app(conf, subject, text)
+    else:
+        _send_wecom_robot(conf, subject, text)
 
 
 def _send_dingtalk(conf: dict, subject: str, text: str) -> None:

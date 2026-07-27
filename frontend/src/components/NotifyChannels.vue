@@ -117,10 +117,92 @@
           <small class="muted">{{ t('notifyCfg.serverchanHint') }}</small></div>
       </div>
 
-      <!-- 企业微信 -->
+      <!-- 企业微信：群机器人 / 自建应用（对齐 CMSHelp「企业微信配置」） -->
       <div v-else-if="tab === 'wecom'" class="fields">
-        <div class="f"><label>{{ t('notifyCfg.robotUrl') }}</label><input v-model="cfg.wecom.url" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
-          <small class="muted">{{ t('notifyCfg.wecomHint') }}</small></div>
+        <div class="f">
+          <label>{{ t('notifyCfg.wecomMode') }}</label>
+          <div class="seg">
+            <button class="seg-b" :class="{ on: wecomMode === 'webhook' }" @click="cfg.wecom.mode = 'webhook'">
+              🤖 {{ t('notifyCfg.wecomModeRobot') }}
+            </button>
+            <button class="seg-b" :class="{ on: wecomMode === 'app' }" @click="cfg.wecom.mode = 'app'">
+              🏢 {{ t('notifyCfg.wecomModeApp') }}
+            </button>
+          </div>
+          <small class="muted">{{ wecomMode === 'app' ? t('notifyCfg.wecomModeAppTip') : t('notifyCfg.wecomModeRobotTip') }}</small>
+        </div>
+
+        <!-- 群机器人 -->
+        <template v-if="wecomMode === 'webhook'">
+          <div class="f"><label>{{ t('notifyCfg.robotUrl') }}</label>
+            <input v-model="cfg.wecom.url" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+            <small class="muted">{{ t('notifyCfg.wecomHint') }}</small></div>
+        </template>
+
+        <!-- 自建应用 -->
+        <template v-else>
+          <div class="f"><label>{{ t('notifyCfg.wecomCorpId') }}</label>
+            <input v-model="cfg.wecom.corp_id" placeholder="ww1234567890abcdef" />
+            <small class="muted">{{ t('notifyCfg.wecomCorpIdHint') }}</small></div>
+          <div class="two">
+            <div class="f"><label>{{ t('notifyCfg.wecomAgentId') }}</label>
+              <input v-model="cfg.wecom.agent_id" placeholder="1000002" /></div>
+            <div class="f"><label>{{ t('notifyCfg.wecomSecret') }}</label>
+              <input v-model="cfg.wecom.secret" type="password" placeholder="应用 Secret" /></div>
+          </div>
+          <small class="muted" style="margin-top:-6px">{{ t('notifyCfg.wecomAgentHint') }}</small>
+          <div class="f"><label>{{ t('notifyCfg.wecomProxy') }}</label>
+            <input v-model="cfg.wecom.proxy_base" placeholder="https://qyapi.weixin.qq.com（留空用官方域名）" />
+            <small class="muted">{{ t('notifyCfg.wecomProxyHint') }}</small></div>
+          <div class="three-e">
+            <div class="f"><label>{{ t('notifyCfg.wecomToUser') }}</label>
+              <input v-model="cfg.wecom.to_user" placeholder="@all 或 UserID，多个用 | 分隔" /></div>
+            <div class="f"><label>{{ t('notifyCfg.wecomToParty') }}</label>
+              <input v-model="cfg.wecom.to_party" placeholder="部门ID，可选" /></div>
+            <div class="f"><label>{{ t('notifyCfg.wecomToTag') }}</label>
+              <input v-model="cfg.wecom.to_tag" placeholder="标签ID，可选" /></div>
+          </div>
+          <div class="two">
+            <div class="f"><label>{{ t('notifyCfg.wecomMsgType') }}</label>
+              <select v-model="cfg.wecom.msg_type">
+                <option value="text">{{ t('notifyCfg.wecomMsgText') }}</option>
+                <option value="markdown">{{ t('notifyCfg.wecomMsgMd') }}</option>
+                <option value="textcard">{{ t('notifyCfg.wecomMsgCard') }}</option>
+              </select></div>
+            <div class="f" v-if="cfg.wecom.msg_type === 'textcard'"><label>{{ t('notifyCfg.wecomCardUrl') }}</label>
+              <input v-model="cfg.wecom.card_url" placeholder="点击卡片跳转地址，如 http://你的域名/subs" /></div>
+          </div>
+          <div class="row">
+            <button class="btn ghost sm" :disabled="checking" @click="wecomCheck">
+              🔍 {{ t('notifyCfg.wecomCheck') }}
+            </button>
+          </div>
+        </template>
+
+        <!-- Web 端配置说明 -->
+        <div class="help">
+          <button class="help-h" @click="wecomHelp = !wecomHelp">
+            <span>📖 {{ t('notifyCfg.wecomGuide') }}</span><span>{{ wecomHelp ? '▲' : '▼' }}</span>
+          </button>
+          <div v-show="wecomHelp" class="help-b">
+            <ol>
+              <li v-for="(s, i) in (wecomMode === 'app' ? wecomSteps : wecomRobotSteps)" :key="i" v-html="s"></li>
+            </ol>
+            <template v-if="wecomMode === 'app'">
+              <p class="warn">⚠️ {{ t('notifyCfg.wecomIpWarn') }}</p>
+              <details>
+                <summary>{{ t('notifyCfg.wecomProxyExample') }}</summary>
+                <pre>{{ nginxSnippet }}</pre>
+                <p class="muted">{{ t('notifyCfg.wecomSocatTip') }}</p>
+                <pre>{{ socatSnippet }}</pre>
+              </details>
+              <p class="muted">{{ t('notifyCfg.wecomAesTip') }}</p>
+            </template>
+            <p class="muted">{{ t('notifyCfg.wecomRef') }}
+              <a href="https://github.com/guyue2005/CMSHelp/wiki/8.%E6%B6%88%E6%81%AF%E9%85%8D%E7%BD%AE" target="_blank" rel="noreferrer">CMSHelp Wiki · 消息配置</a>
+            </p>
+          </div>
+        </div>
       </div>
 
       <!-- 钉钉 -->
@@ -212,6 +294,21 @@ const msg = ref('')
 const ok = ref(false)
 const cfg = ref(defaults())
 const tplPlaceholder = '{{subject}} {{text}}'
+const checking = ref(false)
+const wecomHelp = ref(false)
+const wecomMode = computed(() => cfg.value.wecom?.mode || 'webhook')
+// 说明文案含 <b> 标记，来自 i18n 静态词条（非用户输入），故用 v-html 渲染
+const wecomSteps = computed(() => [1, 2, 3, 4, 5, 6].map((i) => t(`notifyCfg.wecomStep${i}`)))
+const wecomRobotSteps = computed(() => [1, 2, 3].map((i) => t(`notifyCfg.wecomRStep${i}`)))
+const nginxSnippet = `location ^~ /cgi-bin/gettoken       { proxy_pass https://qyapi.weixin.qq.com; }
+location ^~ /cgi-bin/message/send   { proxy_pass https://qyapi.weixin.qq.com; }
+location ^~ /cgi-bin/agent/get      { proxy_pass https://qyapi.weixin.qq.com; }`
+const socatSnippet = `services:
+  wxproxy:
+    image: alpine/socat
+    command: TCP-LISTEN:9090,fork,reuseaddr TCP:qyapi.weixin.qq.com:443
+    ports: ["8543:9090"]
+    restart: always`
 
 const tabs = [
   { key: 'telegram', label: 'Telegram Bot' }, { key: 'feishu', label: '飞书 Bot' },
@@ -225,7 +322,7 @@ const tabs = [
 const enableLabels = {
   telegram: '启用 Telegram 机器人', feishu: '启用飞书机器人', qq: '启用 QQ 机器人',
   bark: '启用 Bark 推送', email: '启用 Email 推送', pushplus: '启用 Pushplus 推送',
-  serverchan: '启用 Server酱', wecom: '启用企业微信机器人', dingtalk: '启用钉钉机器人',
+  serverchan: '启用 Server酱', wecom: '启用企业微信通知', dingtalk: '启用钉钉机器人',
   discord: '启用 Discord', slack: '启用 Slack', ntfy: '启用 ntfy', gotify: '启用 Gotify',
   webhook: '启用 Webhook 推送'
 }
@@ -241,7 +338,11 @@ function defaults() {
     email: { enabled: false, host: '', port: 465, ssl: true, username: '', password: '', from: '', to: '' },
     pushplus: { enabled: false, token: '', topic: '', channel: 'wechat' },
     serverchan: { enabled: false, sendkey: '' },
-    wecom: { enabled: false, url: '' },
+    wecom: {
+      enabled: false, mode: 'webhook', url: '',
+      corp_id: '', agent_id: '', secret: '', proxy_base: '',
+      to_user: '@all', to_party: '', to_tag: '', msg_type: 'text', card_url: ''
+    },
     dingtalk: { enabled: false, url: '', secret: '' },
     discord: { enabled: false, url: '' },
     slack: { enabled: false, url: '' },
@@ -283,6 +384,15 @@ async function test(channel) {
     await api.post('/api/notifications/test', { channel, config: cfg.value[channel] })
     flash(true, t('notifyCfg.testOk'))
   } catch (e) { flash(false, e.response?.data?.detail || 'Error') } finally { testing.value = false }
+}
+
+async function wecomCheck() {
+  checking.value = true; msg.value = ''
+  try {
+    const { data } = await api.post('/api/notifications/wecom/check', { config: cfg.value.wecom })
+    const a = data.agent || {}
+    flash(true, `${t('notifyCfg.wecomCheckOk')}「${a.name}」· AgentId ${a.agentid} · ${t('notifyCfg.wecomScope')}: ${a.users} / ${a.parties} / ${a.tags}`)
+  } catch (e) { flash(false, e.response?.data?.detail || 'Error') } finally { checking.value = false }
 }
 
 async function tgAction(kind) {
@@ -339,5 +449,32 @@ onMounted(load)
 .switch input:checked + .track::after { transform: translateX(18px); }
 .ok { color: var(--success); font-size: 13px; }
 .err { color: var(--danger); font-size: 13px; word-break: break-all; }
-@media (max-width: 720px) { .two, .three { grid-template-columns: 1fr; } }
+/* 企业微信：模式切换 + 配置说明 */
+.three-e { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
+.seg { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: 11px; }
+.seg-b { flex: 1; border: none; background: transparent; padding: 9px 12px; border-radius: 8px;
+  cursor: pointer; font-size: 13px; color: var(--text-soft); transition: all .18s; }
+.seg-b:hover { color: var(--primary); }
+.seg-b.on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.help { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.help-h { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  border: none; background: transparent; padding: 11px 14px; cursor: pointer; font-size: 13px;
+  font-weight: 600; color: var(--text-soft); }
+.help-b { padding: 0 14px 14px; font-size: 12.5px; line-height: 1.75; color: var(--text-soft); }
+.help-b ol { margin: 0 0 10px; padding-left: 20px; }
+.help-b li { margin-bottom: 5px; }
+.help-b :deep(b) { color: var(--text); }
+.help-b .warn { margin: 0 0 10px; padding: 9px 11px; border-radius: 9px;
+  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+  border-left: 3px solid var(--warning, #f59e0b); color: var(--text); }
+.help-b details { margin-bottom: 8px; }
+.help-b summary { cursor: pointer; color: var(--primary); user-select: none; }
+.help-b pre { margin: 8px 0; padding: 10px 12px; border-radius: 9px; background: var(--surface);
+  border: 1px solid var(--border); overflow-x: auto; font-size: 11.5px; line-height: 1.6;
+  white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.help-b p { margin: 6px 0 0; }
+@media (max-width: 720px) {
+  .two, .three, .three-e { grid-template-columns: 1fr; }
+  .seg { flex-direction: column; }
+}
 </style>

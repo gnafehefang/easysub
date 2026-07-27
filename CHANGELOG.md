@@ -15,6 +15,31 @@
 
 ---
 
+## [1.11.0]
+
+### Added
+- **企业微信自建应用推送（debug15-1）**：企业微信从「只支持群机器人」升级为双模式，
+  自建应用模式的配置项与 [CMSHelp 消息配置](https://github.com/guyue2005/CMSHelp/wiki/8.%E6%B6%88%E6%81%AF%E9%85%8D%E7%BD%AE)
+  保持一致——**企业ID（CorpID）+ 应用ID（AgentId）+ 应用Secret + API 代理**，
+  并可指定**接收成员 / 部门 / 标签**（留空按 `@all` 处理）与**消息类型**（text / markdown / textcard）。
+  - `access_token` 按「企业ID+Secret+代理地址」缓存复用（提前 200s 续期），避免触发企业微信频率限制；
+    遇 40014 / 42001 / 41001 自动强制刷新并重试一次。
+  - 常见错误码给出中文定位提示：81013（不在可见范围）、60020/301014（IP 未加白 / 需代理）、40056（AgentId 错误）；
+    `errcode=0` 但 `invaliduser` 非空时也视为失败，不再假装成功。
+  - 新增 `POST /api/notifications/wecom/check`，一键校验配置并回显**应用名 / AgentId / 可见范围**统计。
+  - 应用 Secret 纳入加密存储（`_SECRET_FIELDS`）。
+- **Web 端企业微信配置说明（debug15-1）**：设置 → 通知 → 企业微信内置可折叠图文指引（中 / 英 / 俄）：
+  六步取值路径（企业信息取 CorpID、自建应用取 AgentId/Secret、可见范围、@all 与 UserID 的 `|` 分隔写法、
+  微信插件扫码后可直接在微信收提醒、先「检查应用」再「测试通知」）、
+  **企业可信 IP 白名单警示**，以及 Nginx / Docker socat 两种**反代示例**可展开复制；
+  并明确说明 Token 与 EncodingAESKey 仅用于接收消息回调，单向推送无需填写。
+
+### Changed
+- 群机器人模式选择 textcard 时自动降级为 text（群机器人不支持文本卡片），避免静默失败。
+- 消息按 UTF-8 字节截断到企业微信上限（text 2048B / markdown 4096B / 卡片描述 512B）。
+
+---
+
 ## [1.10.0]
 
 ### Added
