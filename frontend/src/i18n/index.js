@@ -47,7 +47,9 @@ const zh = {
     wecomStep1: '登录 <b>企业微信管理后台</b>（work.weixin.qq.com）→ <b>我的企业 → 企业信息</b>，复制页面底部的 <b>企业ID (CorpID)</b>。',
     wecomStep2: '进入 <b>应用管理 → 应用 → 自建</b>，点「创建应用」上传 logo、填应用名（如 EasySub 订阅提醒），<b>可见范围</b>选择要收提醒的成员或部门。',
     wecomStep3: '打开刚创建的应用，把 <b>AgentId</b> 与 <b>Secret</b> 填到上方（点 Secret 的「查看」后，验证码会发到企业微信/微信里）。',
-    wecomStep4: '<b>接收成员</b>填 <b>@all</b> 即发给可见范围内所有人；也可填成员 <b>UserID</b>（通讯录点开成员可见，多个用 <b>|</b> 分隔）。部门 / 标签同理，三者留空时自动按 @all 处理。',
+    // 注意：@ 是 vue-i18n 的链接消息标记、| 是复数分隔符，必须用 {'@'} {'|'} 字面量转义，
+    // 否则整条消息编译失败会让通知面板整块消失（debug16），或在竖线处被静默截断。
+    wecomStep4: "<b>接收成员</b>填 <b>{'@'}all</b> 即发给可见范围内所有人；也可填成员 <b>UserID</b>（通讯录点开成员可见，多个用 <b>{'|'}</b> 分隔）。部门 / 标签同理，三者留空时自动按 {'@'}all 处理。",
     wecomStep5: '想直接在<b>微信</b>里收提醒：<b>我的企业 → 微信插件</b>，用微信扫码关注即可，无需安装企业微信客户端。',
     wecomStep6: '保存配置后先点 <b>检查应用</b> 校验（会返回应用名与可见范围），再点右上角 <b>测试通知</b> 发一条真实消息确认到达。',
     wecomIpWarn: '2022 年 6 月之后创建的自建应用有 IP 限制：请到「应用 → 企业可信IP」把本服务器的公网出口 IP 加入白名单。若出口 IP 不固定或服务器在境外，用下面的反代 / 中转方案，并把地址填进「API 代理」。',
@@ -228,7 +230,8 @@ const en = {
     wecomStep1: 'Sign in to the <b>WeCom admin console</b> (work.weixin.qq.com) → <b>My Company → Company info</b> and copy the <b>Corp ID</b> at the bottom.',
     wecomStep2: 'Go to <b>App management → Apps → Custom</b>, click “Create app”, upload a logo, name it (e.g. EasySub Reminders) and set <b>visible scope</b> to the members/departments that should get reminders.',
     wecomStep3: 'Open the new app and copy <b>AgentId</b> and <b>Secret</b> into the fields above (clicking “view” on the Secret sends a code to WeCom/WeChat).',
-    wecomStep4: 'Set <b>To user</b> to <b>@all</b> for everyone in scope, or list member <b>UserIDs</b> separated by <b>|</b> (found on the member page in Contacts). Departments/tags work the same way; leaving all three empty falls back to @all.',
+    // @ / | 必须转义，见中文同名词条的注释。
+    wecomStep4: "Set <b>To user</b> to <b>{'@'}all</b> for everyone in scope, or list member <b>UserIDs</b> separated by <b>{'|'}</b> (found on the member page in Contacts). Departments/tags work the same way; leaving all three empty falls back to {'@'}all.",
     wecomStep5: 'To receive reminders in <b>WeChat</b> itself: <b>My Company → WeChat plugin</b> and scan the QR code — no WeCom client required.',
     wecomStep6: 'Save, then hit <b>Check app</b> (returns the app name and scope), then <b>Test</b> at the top right to send a real message.',
     wecomIpWarn: 'Custom apps created after June 2022 are IP-restricted: add this server\'s public egress IP under “App → Trusted enterprise IPs”. If the IP is dynamic or the server is outside China, use the reverse-proxy / relay below and put its address in “API proxy”.',
@@ -409,7 +412,8 @@ const ru = {
     wecomStep1: 'Войдите в <b>консоль WeCom</b> (work.weixin.qq.com) → <b>Моя компания → Данные компании</b> и скопируйте <b>Corp ID</b> внизу страницы.',
     wecomStep2: 'Откройте <b>Управление приложениями → Приложения → Своё</b>, нажмите «Создать приложение», загрузите логотип, задайте имя (напр. EasySub) и укажите <b>область видимости</b> — тех, кто должен получать напоминания.',
     wecomStep3: 'Откройте созданное приложение и скопируйте <b>AgentId</b> и <b>Secret</b> в поля выше (при нажатии «показать» код придёт в WeCom/WeChat).',
-    wecomStep4: 'В <b>Получателях</b> укажите <b>@all</b> — всем в области видимости, либо перечислите <b>UserID</b> через <b>|</b> (виден в карточке сотрудника). Отделы и теги — так же; если все три поля пусты, используется @all.',
+    // @ / | 必须转义，见中文同名词条的注释。
+    wecomStep4: "В <b>Получателях</b> укажите <b>{'@'}all</b> — всем в области видимости, либо перечислите <b>UserID</b> через <b>{'|'}</b> (виден в карточке сотрудника). Отделы и теги — так же; если все три поля пусты, используется {'@'}all.",
     wecomStep5: 'Чтобы получать напоминания прямо в <b>WeChat</b>: <b>Моя компания → плагин WeChat</b>, отсканируйте QR-код — клиент WeCom не нужен.',
     wecomStep6: 'Сохраните, затем нажмите <b>Проверить приложение</b> (вернёт имя и область видимости), а потом <b>Тест</b> вверху справа для реального сообщения.',
     wecomIpWarn: 'У приложений, созданных после июня 2022, есть ограничение по IP: добавьте публичный исходящий IP этого сервера в «Приложение → Доверенные IP компании». Если IP динамический или сервер вне Китая — используйте прокси/релей ниже и укажите его в «API-прокси».',
