@@ -62,8 +62,9 @@
       <p v-else class="muted">{{ t('settings.noRates') }}</p>
     </div>
 
-    <!-- 通知渠道配置（内嵌在设置页） -->
-    <NotifyChannels />
+    <!-- 通知渠道配置（内嵌在设置页）。包一层边界：某个渠道面板万一渲染出错，
+         只坏这一块并显示原因，不会像 debug13 / debug16 那样让整栏静默消失。 -->
+    <ErrorBoundary><NotifyChannels /></ErrorBoundary>
 
     <!-- 提醒与预算 -->
     <div class="card sect">
@@ -231,6 +232,7 @@ import { useI18n } from 'vue-i18n'
 import api from '../api'
 import { useAuth } from '../stores/auth'
 import NotifyChannels from '../components/NotifyChannels.vue'
+import ErrorBoundary from '../components/ErrorBoundary.vue'
 
 const { t, locale } = useI18n()
 const auth = useAuth()

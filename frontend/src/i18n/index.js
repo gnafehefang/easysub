@@ -62,6 +62,10 @@ const zh = {
     slackHint: 'Slack App → Incoming Webhooks → 复制 Webhook URL。',
     ntfyHint: '自建或用公共 ntfy.sh；订阅同名 Topic 即可收到推送。'
   },
+  eb: {
+    title: '此面板加载失败',
+    tip: '页面其余部分不受影响，可以继续使用。这通常是某个新功能的显示问题，把下面这行错误连同当前界面语言反馈给作者即可：'
+  },
   notify: { title: '通知中心', runScan: '立即扫描提醒', empty: '暂无通知记录', sent: '已发送', failed: '失败', daysBefore: '提前天数' },
   rtlog: { title: '实时日志', live: '实时', paused: '已暂停', action: '操作', user: '用户', detail: '详情', time: '时间', empty: '暂无日志', auto: '自动刷新' },
   account: { title: '账号与密码', username: '用户名', email: '邮箱', saveAccount: '保存账号', changePwd: '修改密码', oldPwd: '原密码', newPwd: '新密码', pwdOk: '密码已修改', accountOk: '账号已更新' },
@@ -244,6 +248,10 @@ const en = {
     slackHint: 'Slack App → Incoming Webhooks → copy the Webhook URL.',
     ntfyHint: 'Self-hosted or public ntfy.sh; subscribe to the same topic to receive pushes.'
   },
+  eb: {
+    title: 'This panel failed to load',
+    tip: 'The rest of the page still works. This is usually a display bug in a new feature — please send the error below, plus your current UI language, to the author:'
+  },
   notify: { title: 'Notification Center', runScan: 'Run scan now', empty: 'No notifications yet', sent: 'Sent', failed: 'Failed', daysBefore: 'Days before' },
   rtlog: { title: 'Live Logs', live: 'Live', paused: 'Paused', action: 'Action', user: 'User', detail: 'Detail', time: 'Time', empty: 'No logs', auto: 'Auto refresh' },
   account: { title: 'Account & Password', username: 'Username', email: 'Email', saveAccount: 'Save account', changePwd: 'Change password', oldPwd: 'Old password', newPwd: 'New password', pwdOk: 'Password changed', accountOk: 'Account updated' },
@@ -425,6 +433,10 @@ const ru = {
     discordHint: 'Настройки канала → Интеграции → Вебхуки → скопировать URL.',
     slackHint: 'Slack App → Incoming Webhooks → скопировать URL.',
     ntfyHint: 'Свой или публичный ntfy.sh; подпишитесь на тот же topic.'
+  },
+  eb: {
+    title: 'Не удалось загрузить эту панель',
+    tip: 'Остальная часть страницы работает. Обычно это ошибка отображения новой функции — пришлите автору текст ошибки ниже и текущий язык интерфейса:'
   },
   notify: { title: 'Центр уведомлений', runScan: 'Запустить проверку', empty: 'Нет уведомлений', sent: 'Отправлено', failed: 'Ошибка', daysBefore: 'За дней' },
   rtlog: { title: 'Логи в реальном времени', live: 'Онлайн', paused: 'Пауза', action: 'Действие', user: 'Польз.', detail: 'Детали', time: 'Время', empty: 'Нет логов', auto: 'Автообновление' },
