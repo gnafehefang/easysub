@@ -50,3 +50,13 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/easysub:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 把 DOCKERHUB.md 同步到 Docker Hub 仓库的 Overview（full_description）。
+      # 只在 main 推送时跑（tag 推送会重复同一份内容）；失败不影响镜像发布，故 continue-on-error。
+      - name: Sync Docker Hub overview (DOCKERHUB.md)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: bash ./update-dockerhub-overview.sh
