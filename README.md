@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/github/license/suyijun8182/easysub?color=blue)](./LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/suyijun8182/easysub?logo=docker)](https://hub.docker.com/r/suyijun8182/easysub)
 [![Docker Image Size](https://img.shields.io/docker/image-size/suyijun8182/easysub/latest?logo=docker)](https://hub.docker.com/r/suyijun8182/easysub)
-[![GitHub Release](https://img.shields.io/github/v/release/suyijun8182/easysub?logo=github)](https://github.com/suyijun8182/easysub/releases)
+[![Latest Version](https://img.shields.io/github/v/tag/suyijun8182/easysub?sort=semver&logo=github&label=version)](https://github.com/suyijun8182/easysub/tags)
 [![Stars](https://img.shields.io/github/stars/suyijun8182/easysub?style=social)](https://github.com/suyijun8182/easysub/stargazers)
 
 **中文 | [English](#english) | [Русский](#русский)**
