@@ -1,6 +1,6 @@
 // 省心订阅 EasySub — 简易 Service Worker：缓存应用外壳，支持安装与离线打开。
 // 只缓存静态资源；API 请求一律走网络（不缓存动态数据）。
-const CACHE = 'easysub-shell-v1'
+const CACHE = 'easysub-shell-v2-contact'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (e) => {

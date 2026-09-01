@@ -8,7 +8,7 @@
     <h3>⚠️ {{ t('eb.title') }}</h3>
     <p class="eb-tip">{{ t('eb.tip') }}</p>
     <pre>{{ err }}</pre>
-    <p class="muted eb-contact">TG:@Aiden_SU · E-mail:aidensu8182@gmail.com</p>
+    <p class="muted eb-contact">TG:@U_kn0w_who_bot · E-mail:gnafehefang@gmail.com</p>
   </div>
   <slot v-else />
 </template>

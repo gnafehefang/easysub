@@ -25,8 +25,8 @@
         <a href="#" @click.prevent="logout">🚪 {{ t('nav.logout') }}</a>
       </div>
       <div class="credit">
-        <a href="https://t.me/Aiden_SU" target="_blank" rel="noopener">✈️ TG @Aiden_SU</a>
-        <a href="mailto:aidensu8182@gmail.com">✉️ aidensu8182@gmail.com</a>
+        <a href="https://t.me/U_kn0w_who_bot" target="_blank" rel="noopener">✈️ TG @U_kn0w_who_bot</a>
+        <a href="mailto:gnafehefang@gmail.com">✉️ gnafehefang@gmail.com</a>
       </div>
     </aside>
 
