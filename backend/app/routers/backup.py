@@ -102,6 +102,23 @@ def _collect_entities(db: Session, user: User) -> dict:
     }
 
 
+def _import_failed(db: Session, e: Exception, user: User):
+    """导入出错：回滚并把真实原因返回给前端、写入实时日志。
+
+    debug19：数据库报错原先以 500 纯文本返回，前端拿不到 detail，只能显示
+    「导入失败：文件格式不正确」，真实原因被掩盖。
+    """
+    db.rollback()
+    reason = f"{type(e).__name__}: {(str(e).splitlines() or [''])[0][:300]}"
+    activity.log("backup.import", f"导入失败：{reason}", user=user, level="error")
+    raise HTTPException(500, f"导入失败（未做任何更改）：{reason}")
+
+
+def _s(v, n: int):
+    """字符串按列宽截断：MySQL 严格模式下超长会直接报错（SQLite 不检查，本地测不出）。"""
+    return v[:n] if isinstance(v, str) else v
+
+
 def _parse_date(v):
     try:
         return date.fromisoformat(v) if v else None
@@ -158,7 +175,7 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
         target = existing_cats.get(name)
         if not target:
             target = Category(
-                name=name, icon=c.get("icon"), color=c.get("color"),
+                name=_s(name, 64), icon=_s(c.get("icon"), 128), color=_s(c.get("color"), 16),
                 sort=c.get("sort", 0), user_id=user.id, is_system=False,
             )
             db.add(target)
@@ -173,7 +190,7 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
             continue
         target = existing_pms.get(name)
         if not target:
-            target = PaymentMethod(name=name, icon=p.get("icon"), user_id=user.id, is_system=False)
+            target = PaymentMethod(name=_s(name, 64), icon=_s(p.get("icon"), 128), user_id=user.id, is_system=False)
             db.add(target)
             db.flush()
             existing_pms[name] = target
@@ -186,7 +203,7 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
             continue
         target = existing_bundles.get(name)
         if not target:
-            target = Bundle(name=name, note=b.get("note"), user_id=user.id)
+            target = Bundle(name=_s(name, 128), note=_s(b.get("note"), 255), user_id=user.id)
             db.add(target)
             db.flush()
             existing_bundles[name] = target
@@ -210,19 +227,19 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
         billing_type = s.get("billing_type", "recurring")
         sub = Subscription(
             user_id=user.id,
-            name=s.get("name") or "导入订阅",
-            plan=s.get("plan"),
-            icon=s.get("icon"),
-            url=s.get("url"),
+            name=_s(s.get("name") or "导入订阅", 128),
+            plan=_s(s.get("plan"), 128),
+            icon=_s(s.get("icon"), 512),
+            url=_s(s.get("url"), 512),
             notes=s.get("notes"),
-            remark=s.get("remark"),
-            ipv4=s.get("ipv4"),
-            ipv6=s.get("ipv6"),
+            remark=_s(s.get("remark"), 255),
+            ipv4=_s(s.get("ipv4"), 64),
+            ipv6=_s(s.get("ipv6"), 64),
             category_id=cat_map.get(s.get("category_id")),
             payment_method_id=pm_map.get(s.get("payment_method_id")),
             bundle_id=bundle_map.get(s.get("bundle_id")),
             amount=s.get("amount", 0.0) or 0.0,
-            currency=s.get("currency") or user.base_currency,
+            currency=_s(s.get("currency") or user.base_currency, 8),
             billing_type=billing_type,
             cycle=s.get("cycle", "month"),
             cycle_count=s.get("cycle_count", 1) or 1,
@@ -282,14 +299,19 @@ def import_data(
     """从导出的 JSON 恢复数据。自定义分类/付款方式/捆绑包按名称匹配，缺失则新建。"""
     data = payload.data or {}
     if not isinstance(data.get("subscriptions"), list):
+        if isinstance(data.get("users"), list):
+            raise HTTPException(400, "这是整站备份文件，请到下方「整站备份与恢复」中导入")
         raise HTTPException(400, "备份文件格式不正确：缺少 subscriptions")
 
-    count = _restore_entities(db, user, data, payload.replace)
-    # 恢复通知渠道配置（旧备份无此字段则跳过，保证向后兼容）
-    udata = data.get("user") or {}
-    if isinstance(udata.get("notify_config"), dict):
-        notify.apply_config(user, udata["notify_config"])
-    db.commit()
+    try:
+        count = _restore_entities(db, user, data, payload.replace)
+        # 恢复通知渠道配置（旧备份无此字段则跳过，保证向后兼容）
+        udata = data.get("user") or {}
+        if isinstance(udata.get("notify_config"), dict):
+            notify.apply_config(user, udata["notify_config"])
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        _import_failed(db, e, user)
     activity.log("backup.import", f"导入恢复了 {count} 个订阅", user=user)
     return {"ok": True, "imported": count}
 
@@ -416,7 +438,10 @@ def import_all(
 
         total_subs += _restore_entities(db, target, ub, payload.replace)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        _import_failed(db, e, admin)
     activity.log(
         "backup.import_all",
         f"管理员恢复整站备份：新建 {created_users} 个用户，共导入 {total_subs} 个订阅",

@@ -1,22 +1,28 @@
 <template>
-  <div>
-    <div class="head">
-      <h1>🔔 {{ t('notify.title') }}</h1>
-      <button class="btn" @click="runScan">{{ t('notify.runScan') }}</button>
+  <div class="notify-page">
+    <div class="page-head">
+      <h1>{{ t('notify.title') }}</h1>
+      <button class="btn" @click="runScan"><span v-html="icon('send')"></span>{{ t('notify.runScan') }}</button>
     </div>
 
-    <div class="grid cards">
-      <div v-for="l in logs" :key="l.id" class="card log-card" :class="l.status">
-        <div class="lc-top">
-          <span class="tag" :class="l.status === 'sent' ? 'ok' : 'bad'">
-            {{ l.status === 'sent' ? t('notify.sent') : t('notify.failed') }}
-          </span>
-          <span class="muted">{{ fmt(l.sent_at) }}</span>
+    <div class="card list-card">
+      <div v-if="logs.length" class="n-list">
+        <div v-for="l in logs" :key="l.id" class="n-row">
+          <div class="n-top">
+            <span class="tag" :class="l.status === 'sent' ? 'ok' : 'late'">
+              {{ l.status === 'sent' ? t('notify.sent') : t('notify.failed') }}
+            </span>
+            <span v-if="l.channel" class="tag">{{ l.channel }}</span>
+            <span class="days">{{ t('notify.daysBefore') }}: <b>{{ l.days_before }}</b></span>
+            <span class="time">{{ fmt(l.sent_at) }}</span>
+          </div>
+          <div class="n-body">{{ l.message }}</div>
         </div>
-        <div class="lc-body">{{ l.message }}</div>
-        <div class="muted sm">{{ t('notify.daysBefore') }}: {{ l.days_before }}</div>
       </div>
-      <p v-if="!logs.length" class="muted">{{ t('notify.empty') }}</p>
+      <div v-else class="empty">
+        <span class="empty-i" v-html="icon('inbox')"></span>
+        <b>{{ t('notify.empty') }}</b>
+      </div>
     </div>
   </div>
 </template>
@@ -24,6 +30,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { icon } from '../icons'
 import api from '../api'
 
 const { t } = useI18n()
@@ -38,14 +45,23 @@ onMounted(load)
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; }
-h1 { margin-top: 0; }
-.cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-.log-card { border-left: 4px solid var(--success); }
-.log-card.failed { border-left-color: var(--danger); }
-.lc-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; }
-.lc-body { font-size: 14px; white-space: pre-wrap; line-height: 1.5; }
-.sm { font-size: 12px; margin-top: 8px; }
-.tag.ok { background: #dcfce7; color: #15803d; }
-.tag.bad { background: #fee2e2; color: #b91c1c; }
+.notify-page { min-width: 0; }
+.btn span { display: inline-flex; }
+.list-card { padding: 4px 0; }
+.n-row { padding: 14px 20px; border-bottom: 1px solid var(--border); min-width: 0; }
+.n-row:last-child { border-bottom: 0; }
+.n-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 6px; }
+.days { font-size: 12.5px; color: var(--text-soft); }
+.days b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.time { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--text-soft);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.n-body { font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.empty-i { display: inline-flex; color: var(--text-faint); }
+
+@media (max-width: 720px) {
+  .list-card { padding: 0; }
+  .n-row { padding: 12px 14px; }
+  .time { margin-left: 0; flex-basis: 100%; }
+  .page-head .btn { width: 100%; }
+}
 </style>

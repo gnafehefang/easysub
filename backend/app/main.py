@@ -2,9 +2,9 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import bootstrap, database
@@ -55,6 +55,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="订阅保号通知系统 API", version="1.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    """未处理异常也以 JSON detail 返回（debug19）。
+
+    默认的 500 是纯文本，前端取不到 detail，只能显示笼统的兜底文案，把真实原因掩盖掉。
+    """
+    print(f"[error] {request.method} {request.url.path}: {exc!r}")
+    msg = (str(exc).splitlines() or [""])[0][:300]
+    return JSONResponse(status_code=500, content={"detail": f"服务器内部错误：{type(exc).__name__}: {msg}"})
 
 app.add_middleware(
     CORSMiddleware,

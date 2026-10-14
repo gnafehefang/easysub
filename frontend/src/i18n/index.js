@@ -9,7 +9,7 @@ const zh = {
     testOk: '连接成功', testFail: '连接失败', tip: '提示：若数据库也在 Docker Compose 内，主机填服务名（如 db）；否则填 NAS 局域网 IP。',
     done: '配置完成，正在跳转登录...'
   },
-  nav: { dashboard: '仪表盘', subscriptions: '订阅管理', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', logout: '退出' },
+  nav: { more: '更多', dashboard: '仪表盘', subscriptions: '订阅管理', calendar: '日历', reports: '报表分析', notifications: '通知中心', notifyConfig: '通知配置', logs: '实时日志', settings: '设置', users: '用户管理', logout: '退出' },
   notifyCfg: {
     title: '通知', save: '保存通知配置', test: '测试通知', saved: '已保存', testOk: '测试通知已发送',
     tgApiBase: 'TG API 反代（可选）', httpProxy: 'HTTP 代理（可选）',
@@ -94,7 +94,7 @@ const zh = {
     monthSpend: '本月支出', yearSpend: '年度支出', active: '生效订阅', upcoming: '即将到期', recent: '最近订阅',
     none: '暂无数据', perMonth: '/月', daysLeft: '剩 {n} 天', today: '今天到期',
     overdue: '已过期', byCategory: '分类占比', avgMonth: '平均月支出', expiringSoon: '即将到期', viewAll: '查看全部',
-    greeting: '你好，{name} 👋', subtitle: '这是你的订阅总览', catOverview: '分类总览（全部订阅）'
+    greeting: '你好，{name}', subtitle: '这是你的订阅总览', catOverview: '分类总览（全部订阅）', next30: '未来 30 天', nextDays: '未来 {n} 天', noneInDays: '未来 {n} 天没有续费', lateZone: '已过期', summarySoon: '{n} 项将在 7 天内到期', summaryLate: '{n} 项已过期', summaryClear: '7 天内没有需要续费的订阅', noneIn30: '未来 30 天没有续费', overdueDays: '过期 {n} 天', oneTimeShort: '买断', budgetOf: '月预算'
   },
   sub: {
     add: '添加订阅', edit: '编辑订阅', name: '名称', amount: '金额', currency: '货币',
@@ -102,7 +102,7 @@ const zh = {
     cycle: '周期', cycleCount: '每', day: '天', week: '周', month: '月', year: '年',
     startDate: '开始日期', nextRenewal: '下次续费', endDate: '结束日期', url: '链接', notes: '备注',
     remindDays: '提前提醒(天，逗号分隔)', active: '生效中', autoRenew: '自动续费',
-    icon: '图标', save: '保存', cancel: '取消', delete: '删除', renew: '续费', confirmDelete: '确认删除该订阅？',
+    icon: '图标', save: '保存', cancel: '取消', delete: '删除', renew: '续费', yes: '是', no: '否', confirmDelete: '确认删除该订阅？',
     uploadIcon: '上传图标', filterAll: '全部', filterRecurring: '周期', filterOneTime: '买断',
     plan: '套餐', planPh: '如 高级版 / 专业版',
     secService: '服务', secPrice: '价格信息', secBilling: '计费信息', secClassify: '分类与支付',
@@ -123,7 +123,7 @@ const zh = {
     remark: '个性化备注', remarkPh: '如：家庭主力机 / 香港 CN2（会显示在卡片上）',
     ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6'
   },
-  calendar: { title: '续费日历', noEvents: '本月无续费', today: '今天', more: '还有 {n} 项' },
+  calendar: { title: '续费日历', noEvents: '本月无续费', noEventsDay: '当天无续费', today: '今天', more: '还有 {n} 项' },
   reports: {
     title: '报表分析', overview: '总览', insights: '支出洞察', categoryDetail: '分类明细', recentPayments: '近期付款',
     ranking: '支出排行', oneTime: '永久购买', upcoming: '即将续费', expired: '已过期',
@@ -132,7 +132,7 @@ const zh = {
     recurringSubs: '循环订阅', permanentBuy: '永久购买', count: '数量', amount: '金额', date: '日期', type: '类型',
     permanentTotal: '永久购买总额', recurringMonthly: '循环订阅月支出', noData: '暂无可视化数据'
   },
-  settings: {
+  settings: { themeAuto: '跟随系统',
     title: '设置', language: '语言', theme: '主题', baseCurrency: '基准货币', telegram: 'Telegram 通知',
     tgEnabled: '启用 Telegram 通知', botToken: 'Bot Token', adminId: 'Admin ID',
     apiBase: 'TG API 反代（可选）', proxy: 'HTTP 代理（可选）',
@@ -147,7 +147,7 @@ const zh = {
     tip: '把你的订阅及自定义分类/付款方式等导出为 JSON 离线保存；重新部署后导入即可恢复，避免数据丢失。',
     export: '导出备份', import: '导入恢复', replace: '导入前清空现有订阅',
     replaceConfirm: '将先删除你当前的全部订阅，再从备份导入。确定继续？',
-    exportOk: '备份已下载', importOk: '已成功导入 {n} 个订阅', importFail: '导入失败：文件格式不正确'
+    exportOk: '备份已下载', importOk: '已成功导入 {n} 个订阅', importFail: '导入失败：文件格式不正确', notJson: '导入失败：这不是有效的 JSON 备份文件', httpFail: '导入失败：服务器返回 {s} {m}', netFail: '导入失败：无法连接服务器，请检查网络或反向代理'
   },
   backupAll: {
     title: '整站备份与恢复（管理员）',
@@ -172,7 +172,7 @@ const zh = {
     digest: '每周汇总推送', over: '已超预算', budgetLeft: '预算剩余'
   },
   wk: { mon: '周一', tue: '周二', wed: '周三', thu: '周四', fri: '周五', sat: '周六', sun: '周日' },
-  sec: {
+  sec: { revoke: '吊销',
     title: '安全', twofa: '两步验证 (2FA)', on: '已开启', off: '未开启', enable: '开启', disable: '关闭',
     confirmEnable: '确认开启', scanTip: '用 Google Authenticator / 1Password 等扫码，或手动输入密钥：',
     enabledOk: '两步验证已开启', disabledOk: '两步验证已关闭', enterPwd: '请输入登录密码以关闭两步验证',
@@ -196,7 +196,7 @@ const en = {
     testOk: 'Connected', testFail: 'Connection failed', tip: 'Tip: if MySQL runs in the same Compose, use the service name (e.g. db) as host; otherwise use the NAS LAN IP.',
     done: 'Done, redirecting to login...'
   },
-  nav: { dashboard: 'Dashboard', subscriptions: 'Subscriptions', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', logout: 'Logout' },
+  nav: { more: 'More', dashboard: 'Dashboard', subscriptions: 'Subscriptions', calendar: 'Calendar', reports: 'Reports', notifications: 'Notifications', notifyConfig: 'Notify Channels', logs: 'Live Logs', settings: 'Settings', users: 'Users', logout: 'Logout' },
   notifyCfg: {
     title: 'Notifications', save: 'Save config', test: 'Test', saved: 'Saved', testOk: 'Test notification sent',
     tgApiBase: 'TG API proxy (optional)', httpProxy: 'HTTP proxy (optional)',
@@ -280,7 +280,7 @@ const en = {
     monthSpend: 'This Month', yearSpend: 'This Year', active: 'Active', upcoming: 'Upcoming', recent: 'Recent',
     none: 'No data', perMonth: '/mo', daysLeft: '{n} days left', today: 'Due today',
     overdue: 'Overdue', byCategory: 'By category', avgMonth: 'Avg / month', expiringSoon: 'Expiring soon', viewAll: 'View all',
-    greeting: 'Hi, {name} 👋', subtitle: 'Here is your subscription overview', catOverview: 'All subscriptions by category'
+    greeting: 'Hi, {name}', subtitle: 'Here is your subscription overview', catOverview: 'All subscriptions by category', next30: 'Next 30 days', nextDays: 'Next {n} days', noneInDays: 'No renewals in the next {n} days', lateZone: 'Overdue', summarySoon: '{n} due within 7 days', summaryLate: '{n} overdue', summaryClear: 'Nothing due in the next 7 days', noneIn30: 'No renewals in the next 30 days', overdueDays: '{n}d overdue', oneTimeShort: 'Lifetime', budgetOf: 'Monthly budget'
   },
   sub: {
     add: 'Add', edit: 'Edit', name: 'Name', amount: 'Amount', currency: 'Currency',
@@ -288,7 +288,7 @@ const en = {
     cycle: 'Cycle', cycleCount: 'Every', day: 'day', week: 'week', month: 'month', year: 'year',
     startDate: 'Start', nextRenewal: 'Next renewal', endDate: 'End', url: 'URL', notes: 'Notes',
     remindDays: 'Remind days before (comma)', active: 'Active', autoRenew: 'Auto renew',
-    icon: 'Icon', save: 'Save', cancel: 'Cancel', delete: 'Delete', renew: 'Renew', confirmDelete: 'Delete this subscription?',
+    icon: 'Icon', save: 'Save', cancel: 'Cancel', delete: 'Delete', renew: 'Renew', yes: 'Yes', no: 'No', confirmDelete: 'Delete this subscription?',
     uploadIcon: 'Upload icon', filterAll: 'All', filterRecurring: 'Recurring', filterOneTime: 'One-time',
     plan: 'Plan', planPh: 'e.g. Premium / Pro',
     secService: 'Service', secPrice: 'Price', secBilling: 'Billing', secClassify: 'Category & Payment',
@@ -309,7 +309,7 @@ const en = {
     remark: 'Personal note', remarkPh: 'e.g. main box / HK CN2 (shown on card)',
     ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6'
   },
-  calendar: { title: 'Renewal Calendar', noEvents: 'No renewals this month', today: 'Today', more: '+{n} more' },
+  calendar: { title: 'Renewal Calendar', noEvents: 'No renewals this month', noEventsDay: 'No renewals on this day', today: 'Today', more: '+{n} more' },
   reports: {
     title: 'Reports', overview: 'Overview', insights: 'Insights', categoryDetail: 'Category detail', recentPayments: 'Recent payments',
     ranking: 'Ranking', oneTime: 'Permanent', upcoming: 'Upcoming', expired: 'Expired',
@@ -318,7 +318,7 @@ const en = {
     recurringSubs: 'Recurring', permanentBuy: 'Permanent', count: 'Count', amount: 'Amount', date: 'Date', type: 'Type',
     permanentTotal: 'Permanent total', recurringMonthly: 'Recurring monthly', noData: 'No chart data'
   },
-  settings: {
+  settings: { themeAuto: 'Auto',
     title: 'Settings', language: 'Language', theme: 'Theme', baseCurrency: 'Base currency', telegram: 'Telegram',
     tgEnabled: 'Enable Telegram notifications', botToken: 'Bot Token', adminId: 'Admin ID',
     apiBase: 'TG API proxy (optional)', proxy: 'HTTP proxy (optional)',
@@ -333,7 +333,7 @@ const en = {
     tip: 'Export your subscriptions and custom categories/payment methods as JSON. After a redeploy, import it back to restore and avoid data loss.',
     export: 'Export backup', import: 'Import & restore', replace: 'Clear existing subscriptions first',
     replaceConfirm: 'This will delete all your current subscriptions before importing. Continue?',
-    exportOk: 'Backup downloaded', importOk: 'Imported {n} subscriptions', importFail: 'Import failed: invalid file'
+    exportOk: 'Backup downloaded', importOk: 'Imported {n} subscriptions', importFail: 'Import failed: invalid file', notJson: 'Import failed: not a valid JSON backup', httpFail: 'Import failed: server returned {s} {m}', netFail: 'Import failed: cannot reach the server; check the network or reverse proxy'
   },
   backupAll: {
     title: 'Full Site Backup & Restore (Admin)',
@@ -358,7 +358,7 @@ const en = {
     digest: 'Weekly digest', over: 'Over budget', budgetLeft: 'Budget left'
   },
   wk: { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' },
-  sec: {
+  sec: { revoke: 'Revoke',
     title: 'Security', twofa: 'Two-factor (2FA)', on: 'enabled', off: 'off', enable: 'Enable', disable: 'Disable',
     confirmEnable: 'Confirm', scanTip: 'Scan with Google Authenticator / 1Password, or enter the key manually:',
     enabledOk: '2FA enabled', disabledOk: '2FA disabled', enterPwd: 'Enter your password to disable 2FA',
@@ -382,7 +382,7 @@ const ru = {
     testOk: 'Подключено', testFail: 'Ошибка подключения', tip: 'Подсказка: если MySQL в том же Compose — укажите имя сервиса (например db); иначе IP NAS в локальной сети.',
     done: 'Готово, переход ко входу...'
   },
-  nav: { dashboard: 'Панель', subscriptions: 'Подписки', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', logout: 'Выход' },
+  nav: { more: 'Ещё', dashboard: 'Панель', subscriptions: 'Подписки', calendar: 'Календарь', reports: 'Отчёты', notifications: 'Уведомления', notifyConfig: 'Каналы', logs: 'Логи', settings: 'Настройки', users: 'Пользователи', logout: 'Выход' },
   notifyCfg: {
     title: 'Уведомления', save: 'Сохранить', test: 'Тест', saved: 'Сохранено', testOk: 'Тестовое уведомление отправлено',
     tgApiBase: 'TG API прокси (опц.)', httpProxy: 'HTTP прокси (опц.)',
@@ -466,7 +466,7 @@ const ru = {
     monthSpend: 'За месяц', yearSpend: 'За год', active: 'Активные', upcoming: 'Скоро', recent: 'Недавние',
     none: 'Нет данных', perMonth: '/мес', daysLeft: 'осталось {n} дн.', today: 'Сегодня',
     overdue: 'Просрочено', byCategory: 'По категориям', avgMonth: 'Ср. в месяц', expiringSoon: 'Скоро истекают', viewAll: 'Все',
-    greeting: 'Привет, {name} 👋', subtitle: 'Обзор ваших подписок', catOverview: 'Все подписки по категориям'
+    greeting: 'Привет, {name}', subtitle: 'Обзор ваших подписок', catOverview: 'Все подписки по категориям', next30: 'Ближайшие 30 дней', nextDays: 'Ближайшие {n} дн.', noneInDays: 'В ближайшие {n} дн. продлений нет', lateZone: 'Просрочено', summarySoon: '{n} истекают в течение 7 дней', summaryLate: 'просрочено: {n}', summaryClear: 'В ближайшие 7 дней продлений нет', noneIn30: 'В ближайшие 30 дней продлений нет', overdueDays: 'просрочено {n} дн.', oneTimeShort: 'Навсегда', budgetOf: 'Бюджет на месяц'
   },
   sub: {
     add: 'Добавить', edit: 'Изменить', name: 'Название', amount: 'Сумма', currency: 'Валюта',
@@ -474,7 +474,7 @@ const ru = {
     cycle: 'Цикл', cycleCount: 'Каждые', day: 'день', week: 'неделя', month: 'месяц', year: 'год',
     startDate: 'Начало', nextRenewal: 'Продление', endDate: 'Конец', url: 'Ссылка', notes: 'Заметки',
     remindDays: 'Напомнить за (дней)', active: 'Активна', autoRenew: 'Автопродление',
-    icon: 'Иконка', save: 'Сохранить', cancel: 'Отмена', delete: 'Удалить', renew: 'Продлить', confirmDelete: 'Удалить подписку?',
+    icon: 'Иконка', save: 'Сохранить', cancel: 'Отмена', delete: 'Удалить', renew: 'Продлить', yes: 'Да', no: 'Нет', confirmDelete: 'Удалить подписку?',
     uploadIcon: 'Загрузить иконку', filterAll: 'Все', filterRecurring: 'Регулярные', filterOneTime: 'Разовые',
     plan: 'Тариф', planPh: 'напр. Premium / Pro',
     secService: 'Сервис', secPrice: 'Цена', secBilling: 'Биллинг', secClassify: 'Категория и оплата',
@@ -495,7 +495,7 @@ const ru = {
     remark: 'Заметка', remarkPh: 'напр. основной сервер / HK CN2 (на карточке)',
     ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6'
   },
-  calendar: { title: 'Календарь продлений', noEvents: 'Нет продлений', today: 'Сегодня', more: '+{n} ещё' },
+  calendar: { title: 'Календарь продлений', noEvents: 'Нет продлений', noEventsDay: 'В этот день продлений нет', today: 'Сегодня', more: '+{n} ещё' },
   reports: {
     title: 'Отчёты', overview: 'Обзор', insights: 'Аналитика', categoryDetail: 'По категориям', recentPayments: 'Платежи',
     ranking: 'Рейтинг', oneTime: 'Покупки', upcoming: 'Скоро', expired: 'Истёкшие',
@@ -504,7 +504,7 @@ const ru = {
     recurringSubs: 'Регулярные', permanentBuy: 'Покупки', count: 'Кол-во', amount: 'Сумма', date: 'Дата', type: 'Тип',
     permanentTotal: 'Сумма покупок', recurringMonthly: 'Регулярные в месяц', noData: 'Нет данных для графика'
   },
-  settings: {
+  settings: { themeAuto: 'Авто',
     title: 'Настройки', language: 'Язык', theme: 'Тема', baseCurrency: 'Базовая валюта', telegram: 'Telegram',
     tgEnabled: 'Включить уведомления Telegram', botToken: 'Bot Token', adminId: 'Admin ID',
     apiBase: 'Прокси TG API (опц.)', proxy: 'HTTP прокси (опц.)',
@@ -519,7 +519,7 @@ const ru = {
     tip: 'Экспортируйте подписки и свои категории/способы оплаты в JSON. После переустановки импортируйте файл, чтобы восстановить данные.',
     export: 'Экспорт', import: 'Импорт', replace: 'Сначала очистить подписки',
     replaceConfirm: 'Все текущие подписки будут удалены перед импортом. Продолжить?',
-    exportOk: 'Файл скачан', importOk: 'Импортировано подписок: {n}', importFail: 'Ошибка импорта: неверный файл'
+    exportOk: 'Файл скачан', importOk: 'Импортировано подписок: {n}', importFail: 'Ошибка импорта: неверный файл', notJson: 'Ошибка импорта: это не JSON-резервная копия', httpFail: 'Ошибка импорта: сервер вернул {s} {m}', netFail: 'Ошибка импорта: сервер недоступен, проверьте сеть или прокси'
   },
   backupAll: {
     title: 'Полная резервная копия сайта (админ)',
@@ -544,7 +544,7 @@ const ru = {
     digest: 'Еженедельная сводка', over: 'Превышен бюджет', budgetLeft: 'Остаток бюджета'
   },
   wk: { mon: 'Пн', tue: 'Вт', wed: 'Ср', thu: 'Чт', fri: 'Пт', sat: 'Сб', sun: 'Вс' },
-  sec: {
+  sec: { revoke: 'Отозвать',
     title: 'Безопасность', twofa: 'Двухфакторная (2FA)', on: 'вкл', off: 'выкл', enable: 'Включить', disable: 'Выключить',
     confirmEnable: 'Подтвердить', scanTip: 'Отсканируйте в Google Authenticator / 1Password или введите ключ вручную:',
     enabledOk: '2FA включена', disabledOk: '2FA выключена', enterPwd: 'Введите пароль, чтобы выключить 2FA',

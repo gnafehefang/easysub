@@ -1,28 +1,44 @@
 <template>
-  <div>
-    <div class="head">
-      <h1>{{ t('nav.subscriptions') }}</h1>
-      <button class="btn" @click="openNew">+ {{ t('sub.add') }}</button>
-    </div>
+  <div class="subs">
+    <header class="page-head">
+      <div>
+        <h1>{{ t('nav.subscriptions') }}</h1>
+        <p class="lede">
+          <span v-if="lateN" class="lede-late">{{ t('dashboard.summaryLate', { n: lateN }) }}</span>
+          <span v-if="soonN" class="lede-soon">{{ t('dashboard.summarySoon', { n: soonN }) }}</span>
+          <span v-if="!lateN && !soonN && subs.length" class="lede-ok">{{ t('dashboard.summaryClear') }}</span>
+        </p>
+      </div>
+      <button class="btn" @click="openNew"><span class="i" v-html="icon('plus')"></span>{{ t('sub.add') }}</button>
+    </header>
 
-    <div class="bar">
+    <div class="toolbar">
       <div class="seg">
         <button :class="{ on: filter === '' }" @click="setFilter('')">{{ t('sub.filterAll') }}</button>
         <button :class="{ on: filter === 'recurring' }" @click="setFilter('recurring')">{{ t('sub.filterRecurring') }}</button>
         <button :class="{ on: filter === 'one_time' }" @click="setFilter('one_time')">{{ t('sub.filterOneTime') }}</button>
       </div>
-      <input v-model="search" class="search-box" :placeholder="'🔍 ' + t('sub.searchPh')" />
-      <button class="btn ghost sm" @click="exportCsv">⬇️ CSV</button>
-      <label class="btn ghost sm" style="margin:0;cursor:pointer">⬆️ CSV
-        <input type="file" accept=".csv,text/csv" hidden @change="importCsv" />
+      <label class="search">
+        <span class="i" v-html="icon('search')"></span>
+        <input v-model="search" type="search" :placeholder="t('sub.searchPh')" :aria-label="t('sub.searchPh')" />
       </label>
-      <span class="muted drag-hint">⠿ {{ t('sub.dragHint') }}</span>
+      <div class="tb-right">
+        <button class="btn ghost sm" @click="exportCsv"><span class="i" v-html="icon('download')"></span>CSV</button>
+        <label class="btn ghost sm"><span class="i" v-html="icon('upload')"></span>CSV
+          <input type="file" accept=".csv,text/csv" hidden @change="importCsv" />
+        </label>
+      </div>
+    </div>
+    <p class="drag-hint muted"><span class="i" v-html="icon('grip')"></span>{{ t('sub.dragHint') }}</p>
+
+    <div v-if="!subs.length" class="card empty">
+      <span v-html="icon('subscriptions')"></span>
+      <b>{{ t('dashboard.none') }}</b>
+      <button class="btn" style="margin-top:12px" @click="openNew"><span class="i" v-html="icon('plus')"></span>{{ t('sub.add') }}</button>
     </div>
 
-    <div v-if="!subs.length" class="card muted">{{ t('dashboard.none') }}</div>
-
     <!-- 按分类分组 -->
-    <div v-for="g in grouped" :key="g.key" class="cat-group"
+    <section v-for="g in grouped" :key="g.key" class="cat-group"
          :class="{ 'drop-cat': dragOverCat === g.key }"
          draggable="true"
          @dragstart="onCatDragStart(g.key, $event)"
@@ -30,92 +46,85 @@
          @dragend="clearDrag"
          @drop="onCatDrop(g.key)">
       <div class="cat-head">
-        <span class="grip">⠿</span>
-        <span class="cat-ico">{{ g.icon }}</span>
-        <span class="cat-name">{{ g.name }}</span>
-        <span class="cat-count">{{ g.items.length }}</span>
+        <span class="grip" v-html="icon('grip')"></span>
+        <span class="cat-ico" v-if="g.icon">{{ g.icon }}</span>
+        <h2 class="cat-name">{{ g.name }}</h2>
+        <span class="tag num">{{ g.items.length }}</span>
+        <span class="cat-line"></span>
       </div>
 
       <div class="sub-grid">
-        <div v-for="s in g.items" :key="s.id" class="card sub-card"
-             :class="{ inactive: !s.is_active, expired: isExpired(s), soon: isSoon(s), 'drop-card': dragOverSub === s.id }"
+        <article v-for="(s, i) in g.items" :key="s.id" class="sub-card"
+             :class="['is-' + statusOf(s), { inactive: !s.is_active, 'drop-card': dragOverSub === s.id }]"
              draggable="true"
              @dragstart.stop="onCardDragStart(g.key, s.id, $event)"
              @dragover.prevent.stop="onCardDragOver(g.key, s.id)"
              @dragend="clearDrag"
              @drop.stop="onCardDrop(g.key, s.id)">
           <div class="sc-head">
-            <img v-if="isImg(s.icon)" :src="s.icon" class="sc-ico" />
-            <span v-else class="sc-ico emoji">{{ s.icon || '🔖' }}</span>
+            <SubIcon :icon="s.icon" :name="s.name" :size="44" />
             <div class="sc-title">
-              <div class="sc-name">{{ s.name }}</div>
-              <div class="muted sc-plan" v-if="s.plan">{{ s.plan }}</div>
+              <div class="sc-name" :title="s.name">{{ s.name }}</div>
+              <div class="sc-plan muted" v-if="s.plan">{{ s.plan }}</div>
             </div>
-            <span class="tag" :class="s.billing_type">
-              {{ s.billing_type === 'recurring' ? t('sub.recurring') : t('sub.oneTime') }}
-            </span>
+            <span v-if="statusOf(s) === 'late'" class="tag late"><span class="i" v-html="icon('alert')"></span>{{ t('sub.expiredTag') }}</span>
+            <span v-else-if="statusOf(s) === 'soon'" class="tag soon"><span class="i" v-html="icon('clock')"></span>{{ t('sub.soonTag') }}</span>
+            <span v-else-if="s.billing_type === 'one_time'" class="tag">{{ t('sub.oneTime') }}</span>
           </div>
 
-          <div class="sc-amount">
-            {{ s.amount.toFixed(2) }} <span class="muted cur">{{ s.currency }}</span>
-            <span v-if="s.billing_type === 'recurring'" class="muted cycle">/ {{ cycleText(s) }}</span>
+          <p v-if="s.remark" class="sc-remark">{{ s.remark }}</p>
+
+          <div class="sc-money">
+            <span class="amt num">{{ s.amount.toFixed(2) }}</span>
+            <span class="cur">{{ s.currency }}</span>
+            <span v-if="s.billing_type === 'recurring'" class="cycle">/ {{ cycleText(s) }}</span>
           </div>
 
-          <div v-if="isExpired(s)" class="expired-banner">⚠️ {{ t('sub.expiredTag') }}</div>
-          <div v-else-if="isSoon(s)" class="soon-banner">⏰ {{ t('sub.soonTag') }}</div>
-
-          <div v-if="s.remark" class="sc-remark">📝 {{ s.remark }}</div>
-
-          <div class="sc-rows">
-            <div v-if="s.next_renewal_date" class="sc-row">
-              <span class="muted">📅 {{ t('sub.nextRenewal') }}</span>
-              <span class="due" :class="dueClass(s)">{{ s.next_renewal_date }} · {{ dueText(s) }}</span>
+          <div v-if="s.billing_type === 'recurring' && s.next_renewal_date" class="sc-count">
+            <div class="sc-count-t">
+              <span class="left" :class="statusOf(s)">{{ dueText(s) }}</span>
+              <span class="date num muted">{{ t('sub.nextRenewal') }} {{ s.next_renewal_date }}</span>
             </div>
-            <div class="sc-row" v-if="s.ipv4">
-              <span class="muted">🌐 IPv4</span><span class="mono">{{ s.ipv4 }}</span>
-            </div>
-            <div class="sc-row" v-if="s.ipv6">
-              <span class="muted">🌐 IPv6</span><span class="mono">{{ s.ipv6 }}</span>
-            </div>
-            <div class="sc-row" v-if="payName(s)">
-              <span class="muted">💳 {{ t('sub.payment') }}</span><span>{{ payName(s) }}</span>
-            </div>
-            <div class="sc-row" v-if="s.billing_type === 'recurring'">
-              <span class="muted">🔁 {{ t('sub.autoRenew') }}</span>
-              <span>{{ s.auto_renew ? '✓' : '✗' }}</span>
-            </div>
-            <div class="sc-row" v-if="s.family_members && s.family_members.length">
-              <span class="muted">👨‍👩‍👧 {{ t('sub.family') }}</span>
-              <span>{{ s.family_members.join('、') }}</span>
-            </div>
+            <div v-bind="lifeAttrs(s, i)"><i :style="lifeBar(s).fill"></i></div>
           </div>
+
+          <dl class="sc-facts">
+            <div v-if="s.ipv4"><dt>IPv4</dt><dd class="mono">{{ s.ipv4 }}</dd></div>
+            <div v-if="s.ipv6"><dt>IPv6</dt><dd class="mono">{{ s.ipv6 }}</dd></div>
+            <div v-if="payName(s)"><dt>{{ t('sub.payment') }}</dt><dd>{{ payName(s) }}</dd></div>
+            <div v-if="s.billing_type === 'recurring'"><dt>{{ t('sub.autoRenew') }}</dt>
+              <dd><span class="i yn" :class="{ on: s.auto_renew }" v-html="icon(s.auto_renew ? 'check' : 'x')"></span></dd></div>
+            <div v-if="s.family_members && s.family_members.length"><dt>{{ t('sub.family') }}</dt><dd>{{ s.family_members.join('、') }}</dd></div>
+          </dl>
 
           <div class="sc-acts">
-            <button class="btn sm ghost" @click="openEdit(s)">{{ t('sub.edit') }}</button>
-            <button v-if="s.billing_type === 'recurring'" class="btn sm" @click="askRenew(s)">♻️ {{ t('sub.renew') }}</button>
-            <button class="btn sm danger" @click="askDelete(s)">{{ t('sub.delete') }}</button>
+            <button v-if="s.billing_type === 'recurring'" class="btn sm renew" @click="askRenew(s)">
+              <span class="i" v-html="icon('renew')"></span>{{ t('sub.renew') }}</button>
+            <button class="btn sm ghost" @click="openEdit(s)"><span class="i" v-html="icon('edit')"></span>{{ t('sub.edit') }}</button>
+            <button class="btn sm ghost danger icon" :aria-label="t('sub.delete')" :title="t('sub.delete')" @click="askDelete(s)">
+              <span class="i" v-html="icon('trash')"></span></button>
           </div>
-        </div>
+        </article>
       </div>
-    </div>
+    </section>
 
     <!-- 续费确认弹窗 -->
     <div v-if="renewTarget" class="modal-mask" @click.self="renewTarget = null">
       <div class="modal" style="width:460px">
-        <h3>♻️ {{ t('sub.renewTitle') }}</h3>
+        <h3>{{ t('sub.renewTitle') }}</h3>
         <p style="font-size:14px;line-height:1.6">{{ t('sub.renewMsg', { name: renewTarget.name }) }}</p>
         <label class="opt" :class="{ on: renewMode === 'today' }">
           <input type="radio" value="today" v-model="renewMode" />
           <div>
             <div>{{ t('sub.renewToday') }}</div>
-            <div class="muted opt-d">→ {{ previewToday }}</div>
+            <div class="muted opt-d num">{{ t('sub.nextRenewal') }}：{{ previewToday }}</div>
           </div>
         </label>
         <label class="opt" :class="{ on: renewMode === 'due' }">
           <input type="radio" value="due" v-model="renewMode" />
           <div>
             <div>{{ t('sub.renewDue') }}</div>
-            <div class="muted opt-d">→ {{ previewDue }}</div>
+            <div class="muted opt-d num">{{ t('sub.nextRenewal') }}：{{ previewDue }}</div>
           </div>
         </label>
         <div class="row" style="justify-content:flex-end;margin-top:16px">
@@ -128,7 +137,7 @@
     <!-- 删除确认（需验证密码） -->
     <div v-if="delTarget" class="modal-mask" @click.self="delTarget = null">
       <div class="modal" style="width:420px">
-        <h3>🗑️ {{ t('sub.deleteTitle') }}</h3>
+        <h3>{{ t('sub.deleteTitle') }}</h3>
         <p style="font-size:14px;line-height:1.6">{{ t('sub.deletePwdTip', { name: delTarget.name }) }}</p>
         <input v-model="delPwd" type="password" :placeholder="t('sub.pwdPh')" @keyup.enter="confirmDelete" />
         <p v-if="delErr" class="err">{{ delErr }}</p>
@@ -148,8 +157,7 @@
           <div class="block-t">{{ t('sub.secService') }}</div>
           <div class="row">
             <div class="icon-pick">
-              <img v-if="isImg(form.icon)" :src="form.icon" class="ico-lg" />
-              <span v-else class="ico-lg emoji">{{ form.icon || '🔖' }}</span>
+              <SubIcon :icon="form.icon" :name="form.name" :size="40" />
             </div>
             <div style="flex:2;position:relative">
               <label>{{ t('sub.name') }}</label>
@@ -181,11 +189,11 @@
             </div>
           </template>
 
-          <button class="btn ghost sm" style="margin-top:8px" @click="openBrowser">📚 {{ t('sub.browse') }}</button>
+          <button class="btn ghost sm browse-btn" @click="openBrowser"><span class="i" v-html="icon('library')"></span>{{ t('sub.browse') }}</button>
 
           <details class="icon-lib">
             <summary>{{ t('sub.icon') }} — {{ t('sub.iconLibrary') }} / URL / {{ t('sub.uploadIcon') }}</summary>
-            <input v-model="form.icon" placeholder="🔖 emoji / /static/... / https://..." style="margin:8px 0" />
+            <input v-model="form.icon" placeholder="emoji / /static/... / https://..." style="margin:8px 0" />
             <div class="row" style="margin-bottom:8px">
               <input v-model="iconUrl" :placeholder="t('sub.iconUrl')" style="flex:1" />
               <button class="btn ghost sm" @click="importIconUrl">{{ t('sub.iconUrlImport') }}</button>
@@ -248,7 +256,7 @@
               <input v-model="form.start_date" type="date" />
             </div>
             <div style="flex:1" v-if="form.billing_type === 'recurring'">
-              <label>{{ t('sub.nextRenewal') }} <span class="auto-tip">· 自动</span></label>
+              <label>{{ t('sub.nextRenewal') }}</label>
               <input v-model="form.next_renewal_date" type="date" />
             </div>
           </div>
@@ -259,11 +267,11 @@
             </div>
             <div style="flex:1">
               <label>{{ t('sub.active') }}</label>
-              <select v-model="form.is_active"><option :value="true">✓</option><option :value="false">✗</option></select>
+              <select v-model="form.is_active"><option :value="true">{{ t('sub.yes') }}</option><option :value="false">{{ t('sub.no') }}</option></select>
             </div>
             <div style="flex:1">
               <label>{{ t('sub.autoRenew') }}</label>
-              <select v-model="form.auto_renew"><option :value="true">✓</option><option :value="false">✗</option></select>
+              <select v-model="form.auto_renew"><option :value="true">{{ t('sub.yes') }}</option><option :value="false">{{ t('sub.no') }}</option></select>
             </div>
           </div>
         </div>
@@ -304,7 +312,7 @@
           <div class="block-t">{{ t('sub.secFamily') }}</div>
           <div class="chips">
             <span v-for="(m, i) in form.family_members" :key="i" class="chip">
-              {{ m }} <a href="#" @click.prevent="form.family_members.splice(i, 1)">✕</a>
+              {{ m }} <button class="chip-x" :aria-label="t('sub.delete')" @click="form.family_members.splice(i, 1)" v-html="icon('x')"></button>
             </span>
           </div>
           <div class="row">
@@ -351,8 +359,8 @@
     <!-- 按分类浏览服务库 -->
     <div v-if="showBrowser" class="modal-mask browser" @click.self="showBrowser = false">
       <div class="modal">
-        <div class="head" style="margin-bottom:10px">
-          <h3 style="margin:0">📚 {{ t('sub.browseTitle') }}</h3>
+        <div class="browser-head">
+          <h3 style="margin:0">{{ t('sub.browseTitle') }}</h3>
           <button class="btn ghost sm" @click="showBrowser = false">{{ t('common.close') }}</button>
         </div>
         <p class="muted" style="font-size:13px;margin-top:0">{{ t('sub.pickHint') }}</p>
@@ -380,6 +388,9 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '../api'
 import { useAuth } from '../stores/auth'
+import { icon } from '../icons'
+import { daysLeft, isImg, lifeBar, statusOf } from '../lifeline'
+import SubIcon from '../components/SubIcon.vue'
 
 const { t } = useI18n()
 const auth = useAuth()
@@ -419,7 +430,6 @@ function toast(msg, type = 'ok') {
   setTimeout(() => { toasts.value = toasts.value.filter((x) => x.id !== id) }, 2600)
 }
 
-function isImg(v) { return typeof v === 'string' && (v.startsWith('/') || v.startsWith('http')) }
 function payName(s) {
   const p = methods.value.find((x) => x.id === s.payment_method_id)
   return p ? `${p.icon || ''} ${p.name}`.trim() : ''
@@ -428,32 +438,18 @@ function cycleText(s) {
   const n = s.cycle_count > 1 ? s.cycle_count + ' ' : ''
   return n + t('sub.' + s.cycle)
 }
-function daysLeft(s) {
-  if (!s.next_renewal_date) return null
-  return Math.ceil((new Date(s.next_renewal_date) - new Date()) / 86400000)
-}
 function dueText(s) {
   const d = daysLeft(s)
   if (d === null) return ''
-  if (d < 0) return t('sub.expiredTag')
+  if (d < 0) return t('dashboard.overdueDays', { n: -d })
   return d === 0 ? t('dashboard.today') : t('dashboard.daysLeft', { n: d })
 }
-function dueClass(s) {
-  const d = daysLeft(s)
-  if (d === null) return ''
-  if (d < 0) return 'overdue'
-  if (d <= 7) return 'soon'
-  return ''
+function lifeAttrs(s, i) {
+  const b = lifeBar(s, i)
+  return { class: b.cls, style: b.style }
 }
-function isExpired(s) {
-  if (s.billing_type !== 'recurring' || !s.next_renewal_date) return false
-  return daysLeft(s) < 0
-}
-function isSoon(s) {
-  if (s.billing_type !== 'recurring' || !s.next_renewal_date) return false
-  const d = daysLeft(s)
-  return d >= 0 && d <= 7
-}
+const lateN = computed(() => subs.value.filter((s) => statusOf(s) === 'late').length)
+const soonN = computed(() => subs.value.filter((s) => statusOf(s) === 'soon').length)
 
 /* ---------- 客户端续费日计算（与后端 billing.add_cycle 对齐） ---------- */
 function addMonths(d, months) {
@@ -509,9 +505,9 @@ const NONE = 'none'
 
 function catKeyOf(s) { return s.category_id == null ? NONE : String(s.category_id) }
 function catMeta(key) {
-  if (key === NONE) return { icon: '🗂️', name: t('sub.uncategorized') }
+  if (key === NONE) return { icon: '', name: t('sub.uncategorized') }
   const c = categories.value.find((x) => String(x.id) === key)
-  return c ? { icon: c.icon || '📁', name: c.name } : { icon: '📁', name: key }
+  return c ? { icon: c.icon || '', name: c.name } : { icon: '', name: key }
 }
 
 function rebuild() {
@@ -801,116 +797,153 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-h1 { margin-top: 0; }
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 4px; }
-.seg button { border: none; background: transparent; padding: 6px 14px; border-radius: 6px;
-  cursor: pointer; color: var(--text-soft); }
-.seg button.on { background: var(--primary); color: #fff; }
-.drag-hint { font-size: 12px; }
-.search-box { flex: 1; min-width: 160px; max-width: 320px; padding: 7px 12px; font-size: 13px;
-  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
-.err { color: var(--danger); font-size: 13px; }
+.i { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; }
+.i :deep(svg) { width: 100%; height: 100%; }
+.err { color: var(--late); font-size: 13px; }
 .ico { width: 18px; height: 18px; vertical-align: middle; border-radius: 4px; }
-.auto-tip { color: var(--primary); font-size: 11px; }
 
-/* 分类分组 */
-.cat-group { margin-bottom: 22px; border-radius: 14px; transition: outline .12s; outline: 2px dashed transparent; }
-.cat-group.drop-cat { outline-color: var(--primary); outline-offset: 4px; }
-.cat-head { display: flex; align-items: center; gap: 8px; padding: 6px 4px 12px; cursor: grab; }
-.cat-head .grip { color: var(--text-soft); cursor: grab; }
-.cat-ico { font-size: 18px; }
-.cat-name { font-weight: 700; font-size: 16px; }
-.cat-count { background: var(--surface-2); color: var(--text-soft); border-radius: 20px;
-  padding: 1px 9px; font-size: 12px; }
+.lede { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px !important; }
+.lede span { display: inline-flex; align-items: center; gap: 7px; font-weight: 550; }
+.lede span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.lede-late { color: var(--late); }
+.lede-soon { color: var(--soon); }
+.lede-ok { color: var(--ok); }
 
-/* 放大后的订阅卡片 */
-.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.sub-card { padding: 18px; cursor: grab; position: relative; overflow: hidden;
-  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .2s ease; }
-/* 悬停动感：上浮 + 轻微放大 + 渐变高光描边 + 顶部光带扫过 */
-.sub-card::after { content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
-  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--primary) 14%, transparent), transparent);
-  transform: skewX(-18deg); opacity: 0; transition: opacity .3s; pointer-events: none; }
-.sub-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: var(--shadow-lg);
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
-.sub-card:hover::after { opacity: 1; animation: sheen .8s ease; }
-@keyframes sheen { from { left: -60%; } to { left: 130%; } }
-.sub-card:hover .sc-ico { transform: scale(1.08) rotate(-3deg); }
-.sub-card:active { cursor: grabbing; transform: scale(.99); }
+/* ---------- 工具栏 ---------- */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.search { position: relative; flex: 1; min-width: 180px; max-width: 360px; margin: 0; }
+.search .i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
+.search input { padding-left: 34px; min-height: 38px; }
+.tb-right { display: flex; gap: 8px; margin-left: auto; }
+.tb-right label.btn { margin: 0; color: var(--text); }
+.drag-hint { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin: 10px 0 18px; }
+.drag-hint .i { width: 14px; height: 14px; }
+
+/* ---------- 分类分组 ---------- */
+.cat-group { margin-bottom: 28px; border-radius: var(--radius); outline: 2px dashed transparent; outline-offset: 6px;
+  transition: outline-color .12s; }
+.cat-group.drop-cat { outline-color: var(--primary); }
+.cat-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; cursor: grab; }
+.cat-head .grip { width: 16px; height: 16px; display: inline-flex; color: var(--text-faint); }
+.cat-ico { font-size: 18px; line-height: 1; }
+.cat-name { font-size: 17px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+.cat-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ---------- 订阅卡 ---------- */
+.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.sub-card { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  cursor: grab; transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out), border-color .2s; }
+.sub-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+.sub-card:hover :deep(.sub-icon) { transform: scale(1.06); }
+.sub-card :deep(.sub-icon) { transition: transform .3s var(--ease-out); }
+.sub-card:active { cursor: grabbing; }
 .sub-card.inactive { opacity: .55; }
-.sub-card.expired { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger), var(--shadow); }
-.sub-card.soon { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning), var(--shadow); }
-.sub-card.drop-card { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+.sub-card.drop-card { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+/* 过期：整张卡转为警示色，一眼可见 */
+.sub-card.is-late { background: linear-gradient(var(--late-soft), var(--late-soft)) padding-box, var(--surface);
+  border-color: color-mix(in srgb, var(--late) 45%, var(--border)); }
+.sub-card.is-late:hover { border-color: var(--late); }
+.sub-card.is-soon { border-color: color-mix(in srgb, var(--soon-bar) 60%, var(--border)); }
+.sub-card.is-soon:hover { border-color: var(--soon-bar); }
+
 .sc-head { display: flex; align-items: center; gap: 12px; }
-.sc-ico { width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--border);
-  flex-shrink: 0; background: var(--surface-2); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
-.sc-ico.emoji { display: flex; align-items: center; justify-content: center; font-size: 26px; }
 .sc-title { flex: 1; min-width: 0; }
-.sc-name { font-weight: 600; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sc-plan { font-size: 12px; }
-.sc-amount { font-size: 28px; font-weight: 700; margin: 14px 0 8px; letter-spacing: -.02em; }
-.sc-amount .cur { font-size: 15px; font-weight: 500; }
-.sc-amount .cycle { font-size: 14px; font-weight: 500; }
-.expired-banner { background: var(--danger); color: #fff; font-size: 12px; font-weight: 600;
-  border-radius: 8px; padding: 4px 10px; display: inline-block; margin-bottom: 8px; }
-.soon-banner { background: var(--warning); color: #fff; font-size: 12px; font-weight: 600;
-  border-radius: 8px; padding: 4px 10px; display: inline-block; margin-bottom: 8px; }
-.sc-remark { background: var(--primary-soft); color: var(--primary); border-radius: 8px;
-  padding: 6px 10px; font-size: 13px; margin-bottom: 8px; line-height: 1.4;
-  word-break: break-word; }
-.sc-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-.sc-row { display: flex; justify-content: space-between; gap: 8px; }
-.mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
-.sc-row > span:last-child { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.due.soon { color: var(--warning); font-weight: 600; }
-.due.overdue { color: var(--danger); font-weight: 700; }
-.tag.one_time { background: #fef3c7; color: #b45309; }
-.sc-acts { display: flex; gap: 6px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
-.sc-acts .btn { flex: 1; }
+.sc-name { font-weight: 650; font-size: 16.5px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-plan { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-head .tag { flex-shrink: 0; }
+.sc-head .tag .i { width: 13px; height: 13px; }
+.sc-remark { margin: 0; padding: 7px 10px; border-radius: 8px; font-size: 13px; line-height: 1.45;
+  background: var(--surface-2); color: var(--text); overflow-wrap: anywhere; }
+.is-late .sc-remark { background: color-mix(in srgb, var(--surface) 70%, transparent); }
 
-/* 续费弹窗单选 */
-.opt { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
-  padding: 12px; margin-top: 10px; cursor: pointer; font-size: 14px; color: var(--text); width: auto; }
+.sc-money { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.sc-money .amt { font-size: 26px; font-weight: 650; letter-spacing: -.025em; }
+.sc-money .cur { font-size: 14px; font-weight: 550; color: var(--text-soft); }
+.sc-money .cycle { font-size: 14px; color: var(--text-soft); }
+
+.sc-count { display: flex; flex-direction: column; gap: 6px; }
+.sc-count-t { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.sc-count .left { font-weight: 650; font-size: 14px; color: var(--ok); }
+.sc-count .left.soon { color: var(--soon); }
+.sc-count .left.late { color: var(--late); }
+.sc-count .date { white-space: nowrap; }
+.sc-count .life { height: 7px; }
+
+.sc-facts { margin: 0; display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+.sc-facts:empty { display: none; }
+.sc-facts > div { display: flex; justify-content: space-between; gap: 12px; }
+.sc-facts dt { color: var(--text-soft); flex-shrink: 0; }
+.sc-facts dd { margin: 0; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.yn { width: 15px; height: 15px; color: var(--text-faint); vertical-align: middle; }
+.yn.on { color: var(--ok); }
+
+.sc-acts { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+.sc-acts .btn:not(.icon) { flex: 1; }
+.is-late .sc-acts { border-top-color: color-mix(in srgb, var(--late) 20%, var(--border)); }
+.is-late .renew { background: var(--late); color: #fff; }
+
+/* ---------- 续费弹窗 ---------- */
+.opt { display: flex; align-items: flex-start; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-top: 10px; cursor: pointer; font-size: 14px; color: var(--text); width: auto;
+  transition: border-color .15s, background-color .15s; }
+.opt:hover { border-color: var(--border-strong); }
 .opt.on { border-color: var(--primary); background: var(--primary-soft); }
-.opt input { width: auto; margin-top: 3px; }
-.opt-d { font-size: 12px; margin-top: 3px; }
+.opt input { margin-top: 3px; }
+.opt-d { font-size: 12.5px; margin-top: 3px; }
 
-/* 表单内复用样式 */
-.block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-.block-t { font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
-.icon-pick { display: flex; align-items: flex-end; }
-.ico-lg { width: 40px; height: 40px; border-radius: 8px; object-fit: contain; border: 1px solid var(--border); }
-.ico-lg.emoji { display: flex; align-items: center; justify-content: center; font-size: 24px; }
-.suggest { position: absolute; z-index: 5; left: 0; right: 0; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); margin-top: 2px; }
-.suggest-i { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; font-size: 14px; }
-.suggest-i:hover { background: var(--primary-soft); }
-.icon-lib summary { cursor: pointer; font-size: 13px; color: var(--text-soft); }
-.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, 34px); gap: 8px; max-height: 140px; overflow: auto; }
-.lib-ico { width: 30px; height: 30px; border-radius: 6px; padding: 3px; border: 1px solid var(--border); cursor: pointer; object-fit: contain; }
-.lib-ico:hover { border-color: var(--primary); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.chip { background: var(--primary-soft); color: var(--primary); padding: 3px 8px; border-radius: 16px; font-size: 13px; }
+/* ---------- 表单 ---------- */
+.block { padding: 4px 0 16px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.block:last-of-type { border-bottom: 0; }
+.block-t { font-size: 14px; font-weight: 650; color: var(--text); margin-bottom: 2px; }
+.icon-pick { display: flex; align-items: flex-end; padding-bottom: 1px; }
+.browse-btn { margin-top: 10px; }
+.suggest { position: absolute; z-index: 5; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); margin-top: 4px; padding: 4px; }
+.suggest-i { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 38px; cursor: pointer;
+  font-size: 14px; border-radius: 7px; }
+.suggest-i:hover { background: var(--surface-2); }
+.icon-lib { margin-top: 10px; }
+.icon-lib summary { cursor: pointer; font-size: 13px; color: var(--text-soft); padding: 6px 0; }
+.icon-lib summary:hover { color: var(--text); }
+.icon-lib .row label.btn { margin: 0; color: var(--text); }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, 38px); gap: 6px; max-height: 160px; overflow: auto; }
+.lib-ico { width: 38px; height: 38px; border-radius: 9px; padding: 6px; border: 1px solid var(--border); cursor: pointer;
+  object-fit: contain; background: var(--surface); transition: border-color .12s, transform .12s; }
+.lib-ico:hover { border-color: var(--primary); transform: scale(1.06); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-2); color: var(--text);
+  padding: 3px 4px 3px 10px; border-radius: 999px; font-size: 13px; }
+.chip-x { width: 22px; height: 22px; display: inline-flex; padding: 5px; border: 0; border-radius: 50%; background: none;
+  color: var(--text-soft); cursor: pointer; }
+.chip-x:hover { background: var(--border); color: var(--text); }
 .radio-row { gap: 18px; }
-.rb { display: flex; align-items: center; gap: 6px; width: auto; margin: 0; font-size: 14px; color: var(--text); }
-.rb input { width: auto; }
+.rb { display: flex; align-items: center; gap: 8px; width: auto; margin: 6px 0; font-size: 14px; color: var(--text); cursor: pointer; }
 
-.browser .modal { width: 560px; }
-.lib-group { margin-bottom: 14px; }
+/* ---------- 服务库 ---------- */
+.browser .modal { width: 620px; }
+.browser-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.lib-group { margin-bottom: 16px; }
 .lib-group-t { font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
 .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.svc { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border);
-  border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 13px; color: var(--text);
-  text-align: left; transition: border-color .12s, background .12s; }
-.svc:hover { border-color: var(--primary); background: var(--primary-soft); }
+.svc { display: flex; align-items: center; gap: 9px; padding: 8px 10px; min-height: 42px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; font: inherit; font-size: 13.5px;
+  color: var(--text); text-align: left; transition: border-color .12s, background-color .12s, transform .12s; }
+.svc:hover { border-color: var(--border-strong); background: var(--surface-2); transform: translateY(-1px); }
 .svc-ico { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; flex-shrink: 0; }
 .svc span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 720px) {
-  .sub-grid { grid-template-columns: 1fr; }
-  .sc-name { font-size: 16px; }
+  .search { max-width: none; order: 3; flex-basis: 100%; }
+  .tb-right { margin-left: auto; }
+  .drag-hint { display: none; }
+  .toolbar { margin-bottom: 20px; }
+  .sub-grid { grid-template-columns: 1fr; gap: 12px; }
+  .sub-card { padding: 16px 16px 12px; }
+  .sub-card:hover { transform: none; }
+  .sc-money .amt { font-size: 23px; }
+  .svc-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
 </style>
