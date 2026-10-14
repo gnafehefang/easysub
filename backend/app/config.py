@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     reminder_scan_time: str = "09:00"
 
     # 注册审核 / 邮件（SMTP）
-    require_admin_approval: bool = True       # 新用户注册需管理员审核
+    require_admin_approval: bool = False      # 新用户注册是否需管理员审核（debug19：默认关闭，注册后直接可登录）
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

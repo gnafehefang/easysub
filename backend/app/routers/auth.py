@@ -116,7 +116,7 @@ def verify_email(payload: VerifyEmailIn, db: Session = Depends(get_db)):
     db.commit()
     activity.log("auth.verify_email", f"{user.username} 完成邮箱验证", user=user)
 
-    if not user.is_approved:
+    if not user.is_approved and settings.require_admin_approval:
         return {"status": "pending", "message": "邮箱已验证，等待管理员审核通过后即可登录"}
     return {"status": "ok", "message": "邮箱已验证，请登录"}
 
@@ -134,7 +134,8 @@ def login(
         raise HTTPException(401, "用户名或密码错误")
     if not user.email_verified:
         raise HTTPException(403, "请先完成邮箱验证")
-    if not user.is_approved:
+    if not user.is_approved and settings.require_admin_approval:
+        # 审核已关闭（debug19 起默认关闭）时，此前卡在「待审核」的账号也直接放行
         raise HTTPException(403, "账号正在等待管理员审核，请耐心等待")
     if not user.is_active:
         raise HTTPException(403, "账户已被禁用，请联系管理员")
