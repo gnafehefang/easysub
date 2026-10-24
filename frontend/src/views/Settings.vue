@@ -1,11 +1,48 @@
 <template>
-  <div>
-    <h1>{{ t('settings.title') }}</h1>
+  <div class="settings">
+    <header class="page-head">
+      <h1>{{ t('settings.title') }}</h1>
+    </header>
 
-    <div class="grid two">
+    <div class="set-grid">
+      <!-- 账号与密码 -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('users')"></span>{{ t('account.title') }}</h3>
+        <div class="pair">
+          <div>
+            <label>{{ t('account.username') }}</label>
+            <input v-model="acc.username" autocomplete="username" />
+          </div>
+          <div>
+            <label>{{ t('account.email') }}</label>
+            <input v-model="acc.email" type="email" autocomplete="email" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost sm" @click="saveAccount">{{ t('account.saveAccount') }}</button>
+        </div>
+        <hr />
+        <div class="pair">
+          <div>
+            <label>{{ t('account.oldPwd') }}</label>
+            <input v-model="pwd.old_password" type="password" autocomplete="current-password" />
+          </div>
+          <div>
+            <label>{{ t('account.newPwd') }}</label>
+            <input v-model="pwd.new_password" type="password" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost sm" @click="changePwd">{{ t('account.changePwd') }}</button>
+        </div>
+        <p v-if="accMsg" class="msg" :class="accOk ? 'ok' : 'err'">
+          <span class="mi" v-html="icon(accOk ? 'check' : 'alert')"></span><span>{{ accMsg }}</span>
+        </p>
+      </section>
+
       <!-- 外观与偏好 -->
-      <div class="card sect">
-        <h3>🎨 {{ t('settings.theme') }} / {{ t('settings.language') }}</h3>
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('globe')"></span>{{ t('settings.theme') }} / {{ t('settings.language') }}</h3>
         <label>{{ t('settings.language') }}</label>
         <select v-model="locale" @change="changeLocale">
           <option value="zh">中文</option>
@@ -13,215 +50,244 @@
           <option value="ru">Русский</option>
         </select>
         <label>{{ t('settings.theme') }}</label>
-        <div class="theme-picker">
-          <button v-for="th in themes" :key="th.v" class="th" :class="{ on: theme === th.v }"
-                  :style="{ background: th.c }" :title="t('settings.theme' + th.k)"
-                  @click="theme = th.v; changeTheme()"></button>
+        <div class="theme-picker" role="radiogroup" :aria-label="t('settings.theme')">
+          <button v-for="th in themes" :key="th.v" type="button" class="th" :class="{ on: theme === th.v }"
+                  role="radio" :aria-checked="theme === th.v" :title="themeName(th)"
+                  @click="theme = th.v; changeTheme()">
+            <span class="sw" :style="{ background: th.bg }"><i :style="{ background: th.c }"></i></span>
+            <span class="th-n">{{ themeName(th) }}</span>
+          </button>
         </div>
         <label>{{ t('settings.baseCurrency') }}</label>
         <select v-model="baseCurrency" @change="changeCurrency">
           <option v-for="c in currencies" :key="c.code" :value="c.code">{{ c.code }} {{ c.symbol }}</option>
         </select>
-      </div>
+      </section>
 
-      <!-- 账号与密码 -->
-      <div class="card sect">
-        <h3>👤 {{ t('account.title') }}</h3>
-        <label>{{ t('account.username') }}</label>
-        <input v-model="acc.username" />
-        <label>{{ t('account.email') }}</label>
-        <input v-model="acc.email" type="email" />
-        <button class="btn ghost sm" style="margin-top:10px" @click="saveAccount">{{ t('account.saveAccount') }}</button>
-        <hr />
-        <label>{{ t('account.oldPwd') }}</label>
-        <input v-model="pwd.old_password" type="password" />
-        <label>{{ t('account.newPwd') }}</label>
-        <input v-model="pwd.new_password" type="password" />
-        <button class="btn ghost sm" style="margin-top:10px" @click="changePwd">{{ t('account.changePwd') }}</button>
-        <p v-if="accMsg" :class="accOk ? 'ok' : 'err'">{{ accMsg }}</p>
-      </div>
-    </div>
-
-    <!-- 常用货币当日汇率 -->
-    <div class="card sect">
-      <div class="tg-head">
-        <h3>💱 {{ t('settings.rateTable') }}（{{ rates.base }}）</h3>
-        <button class="btn ghost sm" @click="refreshRates">↻ {{ t('settings.refreshRates') }}</button>
-      </div>
-      <p class="muted" style="font-size:13px;margin-top:0">
-        {{ t('settings.rateTip', { base: rates.base }) }}
-        <span v-if="rates.updated_at"> · {{ t('settings.updatedAt') }} {{ fmtTime(rates.updated_at) }}</span>
-        <span v-if="rateMsg" class="ok"> · {{ rateMsg }}</span>
-      </p>
-      <div v-if="rates.items.length" class="rate-grid">
-        <div v-for="r in rates.items" :key="r.code" class="rate">
-          <div class="rate-code">{{ r.symbol }} {{ r.code }}</div>
-          <div class="rate-val">1 = {{ r.per_unit_in_base }} <span class="muted">{{ rates.base }}</span></div>
-        </div>
-      </div>
-      <p v-else class="muted">{{ t('settings.noRates') }}</p>
-    </div>
-
-    <!-- 通知渠道配置（内嵌在设置页）。包一层边界：某个渠道面板万一渲染出错，
-         只坏这一块并显示原因，不会像 debug13 / debug16 那样让整栏静默消失。 -->
-    <ErrorBoundary><NotifyChannels /></ErrorBoundary>
-
-    <!-- 提醒与预算 -->
-    <div class="card sect">
-      <h3>⏰ {{ t('remind.title') }}</h3>
-      <div class="row" style="gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:150px">
-          <label>{{ t('remind.budget') }}（{{ baseCurrency }}）</label>
-          <input v-model.number="prefs.monthly_budget" type="number" min="0" :placeholder="t('remind.budgetPh')" />
-        </div>
-        <div style="flex:1;min-width:120px">
-          <label>{{ t('remind.quietStart') }}</label>
-          <input v-model="prefs.quiet_start" type="time" />
-        </div>
-        <div style="flex:1;min-width:120px">
-          <label>{{ t('remind.quietEnd') }}</label>
-          <input v-model="prefs.quiet_end" type="time" />
-        </div>
-      </div>
-      <p class="muted" style="font-size:12px;margin:6px 0 0">{{ t('remind.quietHint') }}</p>
-      <div class="row" style="align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap">
-        <label class="switch"><input type="checkbox" v-model="prefs.digest_enabled" /> <span>{{ t('remind.digest') }}</span></label>
-        <select v-if="prefs.digest_enabled" v-model.number="prefs.digest_weekday" style="width:auto">
-          <option v-for="(d, i) in weekdays" :key="i" :value="i">{{ d }}</option>
-        </select>
-        <button class="btn" style="width:auto" @click="savePrefs">{{ t('settings.save') }}</button>
-      </div>
-      <p v-if="prefsMsg" class="ok">{{ prefsMsg }}</p>
-    </div>
-
-    <!-- 数据备份与恢复 -->
-    <div class="card sect">
-      <h3>💾 {{ t('backup.title') }}</h3>
-      <p class="muted" style="font-size:13px;margin-top:0">{{ t('backup.tip') }}</p>
-      <div class="row" style="align-items:center;gap:12px">
-        <button class="btn ghost" @click="exportData">⬇️ {{ t('backup.export') }}</button>
-        <label class="btn ghost" style="width:auto;margin:0">⬆️ {{ t('backup.import') }}
-          <input type="file" accept="application/json,.json" hidden @change="importData" />
-        </label>
-        <label class="switch"><input type="checkbox" v-model="importReplace" /> <span>{{ t('backup.replace') }}</span></label>
-      </div>
-      <p v-if="backupMsg" :class="backupOk ? 'ok' : 'err'">{{ backupMsg }}</p>
-    </div>
-
-    <!-- 日历订阅 (.ics) -->
-    <div class="card sect">
-      <h3>📅 {{ t('cal.title') }}</h3>
-      <p class="muted" style="font-size:13px;margin-top:0">{{ t('cal.tip') }}</p>
-      <div class="row" style="align-items:center;gap:10px">
-        <button class="btn ghost" @click="loadCalUrl">🔗 {{ t('cal.get') }}</button>
-        <button v-if="calUrl" class="btn ghost" @click="copyCal">📋 {{ t('cal.copy') }}</button>
-        <button v-if="calUrl" class="btn ghost" @click="resetCal">♻️ {{ t('cal.reset') }}</button>
-      </div>
-      <input v-if="calUrl" :value="calUrl" readonly class="cal-url" @focus="$event.target.select()" />
-      <p v-if="calMsg" class="ok">{{ calMsg }}</p>
-    </div>
-
-    <!-- 管理员：整站备份与恢复 -->
-    <div class="card sect" v-if="auth.user?.is_admin">
-      <h3>🗄️ {{ t('backupAll.title') }}</h3>
-      <p class="muted" style="font-size:13px;margin-top:0">{{ t('backupAll.tip') }}</p>
-      <div class="row" style="align-items:center;gap:12px">
-        <button class="btn ghost" @click="exportAll">⬇️ {{ t('backupAll.export') }}</button>
-        <label class="btn ghost" style="width:auto;margin:0">⬆️ {{ t('backupAll.import') }}
-          <input type="file" accept="application/json,.json" hidden @change="importAll" />
-        </label>
-        <label class="switch"><input type="checkbox" v-model="importAllReplace" /> <span>{{ t('backupAll.replace') }}</span></label>
-      </div>
-      <p v-if="backupAllMsg" :class="backupAllOk ? 'ok' : 'err'">{{ backupAllMsg }}</p>
-
-      <hr />
-      <h4 style="margin:0 0 6px">🗓️ {{ t('autobk.title') }}</h4>
-      <p class="muted" style="font-size:13px;margin-top:0">{{ t('autobk.tip') }}</p>
-      <div class="row" style="align-items:center;gap:10px">
-        <button class="btn ghost" @click="runAutoBackup">▶️ {{ t('autobk.run') }}</button>
-        <span class="muted" style="font-size:12px" v-if="autobk">{{ t('autobk.keep', { n: autobk.keep }) }}</span>
-      </div>
-      <ul v-if="autobk && autobk.files.length" class="bk-list">
-        <li v-for="f in autobk.files" :key="f.name"><b>{{ f.name }}</b>
-          <span class="muted">{{ (f.size / 1024).toFixed(1) }} KB · {{ fmtTime(f.modified) }}</span></li>
-      </ul>
-      <p v-else-if="autobk" class="muted" style="font-size:13px">{{ t('autobk.none') }}</p>
-    </div>
-
-    <!-- 安全：两步验证 + API Token -->
-    <div class="card sect">
-      <h3>🔒 {{ t('sec.title') }}</h3>
-      <!-- 2FA -->
-      <div class="sec-row">
-        <div><b>{{ t('sec.twofa') }}</b>
-          <span class="muted" style="font-size:12px"> · {{ auth.user?.totp_enabled ? t('sec.on') : t('sec.off') }}</span></div>
-        <button v-if="!auth.user?.totp_enabled && !twofa.qr" class="btn ghost sm" @click="twofaSetup">{{ t('sec.enable') }}</button>
-        <button v-else-if="auth.user?.totp_enabled" class="btn ghost sm" @click="twofaDisable">{{ t('sec.disable') }}</button>
-      </div>
-      <div v-if="twofa.qr && !auth.user?.totp_enabled" class="twofa-box">
-        <img :src="twofa.qr" class="qr" />
-        <div class="twofa-r">
-          <p class="muted" style="font-size:13px;margin:0 0 6px">{{ t('sec.scanTip') }}</p>
-          <code class="secret">{{ twofa.secret }}</code>
-          <div class="row" style="margin-top:8px">
-            <input v-model="twofa.code" :placeholder="t('auth.otpPh')" maxlength="6" style="width:130px" />
-            <button class="btn sm" @click="twofaEnable">{{ t('sec.confirmEnable') }}</button>
+      <!-- 提醒与预算 -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('clock')"></span>{{ t('remind.title') }}</h3>
+        <div class="trio">
+          <div>
+            <label>{{ t('remind.budget') }}（{{ baseCurrency }}）</label>
+            <input v-model.number="prefs.monthly_budget" type="number" min="0" :placeholder="t('remind.budgetPh')" />
+          </div>
+          <div>
+            <label>{{ t('remind.quietStart') }}</label>
+            <input v-model="prefs.quiet_start" type="time" />
+          </div>
+          <div>
+            <label>{{ t('remind.quietEnd') }}</label>
+            <input v-model="prefs.quiet_end" type="time" />
           </div>
         </div>
-      </div>
-      <p v-if="secMsg" :class="secOk ? 'ok' : 'err'">{{ secMsg }}</p>
-
-      <hr />
-      <!-- API Tokens -->
-      <div class="sec-row">
-        <b>🔑 {{ t('sec.apiTokens') }}</b>
-        <div class="row" style="gap:6px">
-          <input v-model="newTokenName" :placeholder="t('sec.tokenName')" style="width:130px" />
-          <button class="btn ghost sm" @click="createToken">＋</button>
+        <p class="muted hint">{{ t('remind.quietHint') }}</p>
+        <div class="toggle-row">
+          <label class="switch"><input type="checkbox" v-model="prefs.digest_enabled" /> <span>{{ t('remind.digest') }}</span></label>
+          <select v-if="prefs.digest_enabled" v-model.number="prefs.digest_weekday" class="auto-w">
+            <option v-for="(d, i) in weekdays" :key="i" :value="i">{{ d }}</option>
+          </select>
         </div>
-      </div>
-      <p v-if="createdToken" class="ok" style="word-break:break-all">{{ t('sec.tokenOnce') }}<br /><code>{{ createdToken }}</code></p>
-      <ul v-if="tokens.length" class="bk-list">
-        <li v-for="tk in tokens" :key="tk.id"><b>{{ tk.name }}</b>
-          <span class="muted">{{ tk.masked }} · {{ tk.last_used_at ? fmtTime(tk.last_used_at) : t('sec.neverUsed') }}
-            <a href="#" @click.prevent="revokeToken(tk.id)" style="color:var(--danger);margin-left:8px">✕</a></span></li>
-      </ul>
-    </div>
+        <div class="actions">
+          <button class="btn" @click="savePrefs">{{ t('settings.save') }}</button>
+          <p v-if="prefsMsg" class="msg ok inline">
+            <span class="mi" v-html="icon('check')"></span><span>{{ prefsMsg }}</span>
+          </p>
+        </div>
+      </section>
 
-    <!-- 版本与更新 -->
-    <div class="card sect">
-      <h3>🚀 {{ t('upd.title') }}</h3>
-      <div class="row" style="align-items:center;gap:12px;flex-wrap:wrap">
-        <span>{{ t('sys.version') }}：<b>v{{ sys?.version }}</b></span>
-        <button class="btn ghost sm" :disabled="updChecking" @click="checkUpdate(true)">🔄 {{ t('upd.check') }}</button>
-        <span v-if="upd && !upd.error">
-          <b v-if="upd.update_available" class="ok">🎉 {{ t('upd.newVersion', { v: upd.latest }) }}</b>
-          <b v-else-if="upd.latest" style="color:var(--success)">✓ {{ t('upd.isLatest') }}</b>
-        </span>
-        <span v-else-if="upd && upd.error" class="muted" style="font-size:12px">{{ t('upd.failed') }}</span>
-      </div>
-      <div v-if="upd && upd.update_available" class="upd-box">
-        <p style="font-size:13px;margin:0 0 6px">{{ t('upd.howto') }}
-          <a :href="upd.release_url" target="_blank" rel="noopener">{{ t('upd.view') }} →</a></p>
-        <code>docker compose -f docker-compose.hub.yml pull &amp;&amp; docker compose -f docker-compose.hub.yml up -d</code>
-        <p class="muted" style="font-size:12px;margin:6px 0 0">💡 {{ t('upd.backupTip') }}</p>
-      </div>
-    </div>
+      <!-- 安全：两步验证 + API Token -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('check')"></span>{{ t('sec.title') }}</h3>
+        <!-- 2FA -->
+        <div class="sec-row">
+          <div class="sec-l">
+            <b>{{ t('sec.twofa') }}</b>
+            <span class="tag" :class="{ ok: auth.user?.totp_enabled }">{{ auth.user?.totp_enabled ? t('sec.on') : t('sec.off') }}</span>
+          </div>
+          <button v-if="!auth.user?.totp_enabled && !twofa.qr" class="btn ghost sm" @click="twofaSetup">{{ t('sec.enable') }}</button>
+          <button v-else-if="auth.user?.totp_enabled" class="btn ghost sm" @click="twofaDisable">{{ t('sec.disable') }}</button>
+        </div>
+        <div v-if="twofa.qr && !auth.user?.totp_enabled" class="twofa-box">
+          <img :src="twofa.qr" class="qr" alt="QR" />
+          <div class="twofa-r">
+            <p class="muted hint top">{{ t('sec.scanTip') }}</p>
+            <code class="secret">{{ twofa.secret }}</code>
+            <div class="inline-form">
+              <input v-model="twofa.code" :placeholder="t('auth.otpPh')" maxlength="6" inputmode="numeric" class="otp" />
+              <button class="btn sm" @click="twofaEnable">{{ t('sec.confirmEnable') }}</button>
+            </div>
+          </div>
+        </div>
+        <p v-if="secMsg" class="msg" :class="secOk ? 'ok' : 'err'">
+          <span class="mi" v-html="icon(secOk ? 'check' : 'alert')"></span><span>{{ secMsg }}</span>
+        </p>
 
-    <!-- 系统信息 -->
-    <div class="card sect">
-      <h3>ℹ️ {{ t('sys.title') }}</h3>
-      <div class="sys-grid" v-if="sys">
-        <div class="si"><span class="muted">{{ t('sys.version') }}</span><b>{{ sys.version }}</b></div>
-        <div class="si"><span class="muted">{{ t('sys.dbStatus') }}</span>
-          <b class="ok" v-if="sys.db_configured">● {{ t('sys.configured') }}</b><b v-else>—</b></div>
-        <div class="si"><span class="muted">{{ t('sys.serverTime') }}</span><b>{{ sys.server_time }}</b></div>
-        <div class="si"><span class="muted">{{ t('sys.timezone') }}</span><b>{{ sys.timezone }}</b></div>
-        <div class="si"><span class="muted">{{ t('sys.scanTime') }}</span><b>{{ sys.reminder_scan_time }}</b></div>
-        <div class="si"><span class="muted">{{ t('sys.yourSubs') }}</span><b>{{ sys.your_subscriptions }}</b></div>
-        <div class="si" v-if="sys.total_users != null"><span class="muted">{{ t('sys.totalUsers') }}</span><b>{{ sys.total_users }}</b></div>
-        <div class="si" v-if="sys.total_subscriptions != null"><span class="muted">{{ t('sys.totalSubs') }}</span><b>{{ sys.total_subscriptions }}</b></div>
+        <hr />
+        <!-- API Tokens -->
+        <div class="sec-row">
+          <b>{{ t('sec.apiTokens') }}</b>
+          <div class="inline-form">
+            <input v-model="newTokenName" :placeholder="t('sec.tokenName')" class="tk-name" />
+            <button class="btn ghost sm icon" :title="t('sec.tokenName')" :aria-label="t('sec.tokenName')" @click="createToken">
+              <span v-html="icon('plus')"></span>
+            </button>
+          </div>
+        </div>
+        <div v-if="createdToken" class="token-once">
+          <p class="msg ok"><span class="mi" v-html="icon('check')"></span><span>{{ t('sec.tokenOnce') }}</span></p>
+          <code class="code">{{ createdToken }}</code>
+        </div>
+        <ul v-if="tokens.length" class="item-list">
+          <li v-for="tk in tokens" :key="tk.id">
+            <div class="il-main">
+              <b>{{ tk.name }}</b>
+              <span class="muted">{{ tk.masked }} · {{ tk.last_used_at ? fmtTime(tk.last_used_at) : t('sec.neverUsed') }}</span>
+            </div>
+            <button class="btn ghost danger sm icon" :aria-label="t('sec.revoke')" :title="t('sec.revoke')" @click="revokeToken(tk.id)">
+              <span v-html="icon('x')"></span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <!-- 通知渠道配置（内嵌在设置页）。包一层边界：某个渠道面板万一渲染出错，
+           只坏这一块并显示原因，不会像 debug13 / debug16 那样让整栏静默消失。 -->
+      <div class="span-all">
+        <ErrorBoundary><NotifyChannels /></ErrorBoundary>
       </div>
+
+      <!-- 常用货币当日汇率 -->
+      <section class="card sect">
+        <div class="sh-row">
+          <h3 class="sh"><span class="hi" v-html="icon('trending')"></span>{{ t('settings.rateTable') }}（{{ rates.base }}）</h3>
+          <button class="btn ghost sm" @click="refreshRates"><span v-html="icon('renew')"></span>{{ t('settings.refreshRates') }}</button>
+        </div>
+        <p class="muted desc">
+          {{ t('settings.rateTip', { base: rates.base }) }}
+          <span v-if="rates.updated_at"> · {{ t('settings.updatedAt') }} {{ fmtTime(rates.updated_at) }}</span>
+          <span v-if="rateMsg" class="rate-msg"> · {{ rateMsg }}</span>
+        </p>
+        <div v-if="rates.items.length" class="rate-grid">
+          <div v-for="r in rates.items" :key="r.code" class="rate">
+            <div class="rate-code">{{ r.symbol }} {{ r.code }}</div>
+            <div class="rate-val tabular">1 = {{ r.per_unit_in_base }} <span class="muted">{{ rates.base }}</span></div>
+          </div>
+        </div>
+        <p v-else class="muted hint">{{ t('settings.noRates') }}</p>
+      </section>
+
+      <!-- 日历订阅 (.ics) -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('calendar')"></span>{{ t('cal.title') }}</h3>
+        <p class="muted desc">{{ t('cal.tip') }}</p>
+        <div class="actions">
+          <button class="btn ghost" @click="loadCalUrl"><span v-html="icon('globe')"></span>{{ t('cal.get') }}</button>
+          <button v-if="calUrl" class="btn ghost" @click="copyCal"><span v-html="icon('note')"></span>{{ t('cal.copy') }}</button>
+          <button v-if="calUrl" class="btn ghost" @click="resetCal"><span v-html="icon('renew')"></span>{{ t('cal.reset') }}</button>
+        </div>
+        <input v-if="calUrl" :value="calUrl" readonly class="cal-url" @focus="$event.target.select()" />
+        <p v-if="calMsg" class="msg neutral">{{ calMsg }}</p>
+      </section>
+
+      <!-- 数据备份与恢复 -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('package')"></span>{{ t('backup.title') }}</h3>
+        <p class="muted desc">{{ t('backup.tip') }}</p>
+        <div class="actions">
+          <button class="btn ghost" @click="exportData"><span v-html="icon('download')"></span>{{ t('backup.export') }}</button>
+          <label class="btn ghost file-btn"><span v-html="icon('upload')"></span>{{ t('backup.import') }}
+            <input type="file" accept="application/json,.json" hidden @change="importData" />
+          </label>
+        </div>
+        <div class="toggle-row">
+          <label class="switch"><input type="checkbox" v-model="importReplace" /> <span>{{ t('backup.replace') }}</span></label>
+        </div>
+        <p v-if="backupMsg" class="msg" :class="backupOk ? 'ok' : 'err'">
+          <span class="mi" v-html="icon(backupOk ? 'check' : 'alert')"></span><span>{{ backupMsg }}</span>
+        </p>
+      </section>
+
+      <!-- 管理员：整站备份与恢复 -->
+      <section class="card sect" v-if="auth.user?.is_admin">
+        <h3 class="sh"><span class="hi" v-html="icon('library')"></span>{{ t('backupAll.title') }}</h3>
+        <p class="muted desc">{{ t('backupAll.tip') }}</p>
+        <div class="actions">
+          <button class="btn ghost" @click="exportAll"><span v-html="icon('download')"></span>{{ t('backupAll.export') }}</button>
+          <label class="btn ghost file-btn"><span v-html="icon('upload')"></span>{{ t('backupAll.import') }}
+            <input type="file" accept="application/json,.json" hidden @change="importAll" />
+          </label>
+        </div>
+        <div class="toggle-row">
+          <label class="switch"><input type="checkbox" v-model="importAllReplace" /> <span>{{ t('backupAll.replace') }}</span></label>
+        </div>
+        <p v-if="backupAllMsg" class="msg" :class="backupAllOk ? 'ok' : 'err'">
+          <span class="mi" v-html="icon(backupAllOk ? 'check' : 'alert')"></span><span>{{ backupAllMsg }}</span>
+        </p>
+
+        <hr />
+        <h4 class="sub-h"><span class="hi" v-html="icon('clock')"></span>{{ t('autobk.title') }}</h4>
+        <p class="muted desc">{{ t('autobk.tip') }}</p>
+        <div class="actions">
+          <button class="btn ghost sm" @click="runAutoBackup"><span v-html="icon('package')"></span>{{ t('autobk.run') }}</button>
+          <span class="muted hint" v-if="autobk">{{ t('autobk.keep', { n: autobk.keep }) }}</span>
+        </div>
+        <ul v-if="autobk && autobk.files.length" class="item-list">
+          <li v-for="f in autobk.files" :key="f.name">
+            <div class="il-main">
+              <b>{{ f.name }}</b>
+              <span class="muted tabular">{{ (f.size / 1024).toFixed(1) }} KB · {{ fmtTime(f.modified) }}</span>
+            </div>
+          </li>
+        </ul>
+        <p v-else-if="autobk" class="muted hint">{{ t('autobk.none') }}</p>
+      </section>
+
+      <!-- 版本与更新 -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('renew')"></span>{{ t('upd.title') }}</h3>
+        <div class="ver-row">
+          <span class="ver">{{ t('sys.version') }} <b class="tabular">v{{ sys?.version }}</b></span>
+          <button class="btn ghost sm" :disabled="updChecking" @click="checkUpdate(true)">
+            <span v-html="icon('renew')"></span>{{ t('upd.check') }}
+          </button>
+        </div>
+        <template v-if="upd && !upd.error">
+          <p v-if="upd.update_available" class="msg ok">
+            <span class="mi" v-html="icon('sparkle')"></span><b>{{ t('upd.newVersion', { v: upd.latest }) }}</b>
+          </p>
+          <p v-else-if="upd.latest" class="msg ok">
+            <span class="mi" v-html="icon('check')"></span><span>{{ t('upd.isLatest') }}</span>
+          </p>
+        </template>
+        <p v-else-if="upd && upd.error" class="msg neutral">
+          <span class="mi" v-html="icon('alert')"></span><span>{{ t('upd.failed') }}</span>
+        </p>
+        <div v-if="upd && upd.update_available" class="upd-box">
+          <p class="upd-how">{{ t('upd.howto') }}
+            <a :href="upd.release_url" target="_blank" rel="noopener">{{ t('upd.view') }}</a></p>
+          <code class="code">docker compose -f docker-compose.hub.yml pull &amp;&amp; docker compose -f docker-compose.hub.yml up -d</code>
+          <p class="muted hint">{{ t('upd.backupTip') }}</p>
+        </div>
+      </section>
+
+      <!-- 系统信息 -->
+      <section class="card sect">
+        <h3 class="sh"><span class="hi" v-html="icon('dashboard')"></span>{{ t('sys.title') }}</h3>
+        <dl class="kv" v-if="sys">
+          <div><dt>{{ t('sys.version') }}</dt><dd>{{ sys.version }}</dd></div>
+          <div><dt>{{ t('sys.dbStatus') }}</dt>
+            <dd v-if="sys.db_configured" class="db-ok"><span class="dot ok"></span>{{ t('sys.configured') }}</dd>
+            <dd v-else>—</dd></div>
+          <div><dt>{{ t('sys.serverTime') }}</dt><dd>{{ sys.server_time }}</dd></div>
+          <div><dt>{{ t('sys.timezone') }}</dt><dd>{{ sys.timezone }}</dd></div>
+          <div><dt>{{ t('sys.scanTime') }}</dt><dd>{{ sys.reminder_scan_time }}</dd></div>
+          <div><dt>{{ t('sys.yourSubs') }}</dt><dd>{{ sys.your_subscriptions }}</dd></div>
+          <div v-if="sys.total_users != null"><dt>{{ t('sys.totalUsers') }}</dt><dd>{{ sys.total_users }}</dd></div>
+          <div v-if="sys.total_subscriptions != null"><dt>{{ t('sys.totalSubs') }}</dt><dd>{{ sys.total_subscriptions }}</dd></div>
+        </dl>
+        <p v-else class="muted hint">{{ t('common.loading') }}</p>
+      </section>
     </div>
   </div>
 </template>
@@ -233,18 +299,22 @@ import api from '../api'
 import { useAuth } from '../stores/auth'
 import NotifyChannels from '../components/NotifyChannels.vue'
 import ErrorBoundary from '../components/ErrorBoundary.vue'
+import { icon } from '../icons'
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const auth = useAuth()
 
+// 色板预览：bg = 该主题底色，c = 该主题操作色（与 styles/theme.css 对应）
 const themes = [
-  { v: 'light', k: 'Light', c: '#ffffff' },
-  { v: 'dark', k: 'Dark', c: '#181d2e' },
-  { v: 'ocean', k: 'Ocean', c: '#06b6d4' },
-  { v: 'forest', k: 'Forest', c: '#16a34a' },
-  { v: 'purple', k: 'Purple', c: '#9333ea' },
-  { v: 'auto', k: 'Auto', c: 'linear-gradient(135deg,#ffffff 50%,#181d2e 50%)' }
+  { v: 'light', k: 'Light', bg: '#f6f7f5', c: '#1b1f24' },
+  { v: 'dark', k: 'Dark', bg: '#171a1e', c: '#eceef0' },
+  { v: 'ocean', k: 'Ocean', bg: '#f1f6f8', c: '#0b5d78' },
+  { v: 'forest', k: 'Forest', bg: '#f2f5f0', c: '#2f5d3a' },
+  { v: 'purple', k: 'Purple', bg: '#f5f3f9', c: '#5b3fc4' },
+  { v: 'auto', k: 'Auto', bg: 'linear-gradient(135deg,#f6f7f5 50%,#171a1e 50%)', c: '#8a919b' }
 ]
+// themeAuto 尚无词条时回退显示 Auto，避免把 key 原样显示出来
+function themeName(th) { const k = 'settings.theme' + th.k; return te(k) ? t(k) : th.k }
 
 const theme = ref(auth.user?.theme || 'light')
 const baseCurrency = ref(auth.user?.base_currency || 'CNY')
@@ -362,6 +432,20 @@ async function exportData() {
   }
 }
 
+// 读取备份文件：去掉 BOM 再解析；解析失败单独标记，和服务器报错区分开（debug19）
+async function readBackupJson(file) {
+  const text = (await file.text()).replace(/^﻿/, '')
+  try { return JSON.parse(text) } catch { throw { notJson: true } }
+}
+function importErrText(err) {
+  if (err?.notJson) return t('backup.notJson')
+  const d = err?.response?.data?.detail
+  if (typeof d === 'string' && d) return d
+  if (Array.isArray(d) && d.length) return t('backup.httpFail', { s: err.response.status, m: d[0].msg || '' })
+  if (err?.response) return t('backup.httpFail', { s: err.response.status, m: String(err.response.statusText || '') })
+  return t('backup.netFail')
+}
+
 async function importData(e) {
   const file = e.target.files[0]
   if (!file) return
@@ -371,13 +455,13 @@ async function importData(e) {
     return
   }
   try {
-    const json = JSON.parse(await file.text())
+    const json = await readBackupJson(file)
     const { data } = await api.post('/api/backup/import', { data: json, replace: importReplace.value })
     backupOk.value = true
     backupMsg.value = t('backup.importOk', { n: data.imported })
   } catch (err) {
     backupOk.value = false
-    backupMsg.value = err.response?.data?.detail || t('backup.importFail')
+    backupMsg.value = importErrText(err)
   } finally {
     e.target.value = ''
   }
@@ -414,13 +498,13 @@ async function importAll(e) {
     return
   }
   try {
-    const json = JSON.parse(await file.text())
+    const json = await readBackupJson(file)
     const { data } = await api.post('/api/backup/import-all', { data: json, replace: importAllReplace.value })
     backupAllOk.value = true
     backupAllMsg.value = t('backupAll.importOk', { users: data.users, created: data.created_users, n: data.imported })
   } catch (err) {
     backupAllOk.value = false
-    backupAllMsg.value = err.response?.data?.detail || t('backup.importFail')
+    backupAllMsg.value = importErrText(err)
   } finally {
     e.target.value = ''
   }
@@ -498,40 +582,142 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-h1 { margin-top: 0; }
-.cal-url { width: 100%; margin-top: 10px; font-family: monospace; font-size: 12px; padding: 8px 10px;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); }
-.bk-list { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
-.bk-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px;
-  padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
-.bk-list .muted { font-size: 12px; }
-.sec-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; }
-.twofa-box { display: flex; gap: 16px; align-items: flex-start; margin: 10px 0; flex-wrap: wrap; }
-.twofa-box .qr { width: 150px; height: 150px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
-.twofa-r { flex: 1; min-width: 200px; }
-.secret { display: inline-block; background: var(--surface-2); padding: 4px 8px; border-radius: 6px; font-size: 13px; word-break: break-all; }
-.upd-box { margin-top: 12px; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); }
-.upd-box code { display: block; background: var(--surface); padding: 8px 10px; border-radius: 8px; font-size: 12px; word-break: break-all; }
-.two { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
-.sect { margin-bottom: 16px; }
-.sect h3 { margin-top: 0; }
-hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-.ok { color: var(--success); font-size: 13px; }
-.err { color: var(--danger); font-size: 13px; word-break: break-all; }
-.tg-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-.switch { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); cursor: pointer; width: auto; margin: 0; }
-.switch input { width: auto; }
-.theme-picker { display: flex; gap: 10px; margin: 6px 0 4px; }
-.th { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
-.th.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-.rate { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-2);
-  transition: transform .15s ease, border-color .15s ease; }
-.rate:hover { transform: translateY(-2px); border-color: var(--primary); }
-.rate-code { font-weight: 600; font-size: 14px; }
-.rate-val { font-size: 13px; color: var(--text); margin-top: 3px; }
-.sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.si { display: flex; flex-direction: column; gap: 3px; padding: 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; }
-.si .muted { font-size: 12px; }
-@media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+/* ---------- 布局：桌面两列卡片，通知渠道通栏 ---------- */
+.set-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.set-grid > .card, .set-grid > .span-all :deep(.card) { margin: 0; min-width: 0; }
+.span-all { grid-column: 1 / -1; min-width: 0; }
+
+/* ---------- 卡片标题 ---------- */
+.sh { display: flex; align-items: center; gap: 9px; margin: 0 0 6px; }
+.sh + :not(.desc) { margin-top: 10px; }
+.hi { display: inline-flex; width: 18px; height: 18px; flex-shrink: 0; color: var(--text-soft); }
+.sh-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.sh-row .sh { margin: 0; }
+.sub-h { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 4px; }
+.sub-h .hi { width: 16px; height: 16px; }
+.desc { font-size: 13px; margin: 0 0 14px; line-height: 1.6; }
+.hint { font-size: 12.5px; margin: 8px 0 0; line-height: 1.6; }
+.hint.top { margin: 0 0 8px; }
+hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+.sect > label:first-of-type { margin-top: 8px; }
+
+/* ---------- 字段排布 ---------- */
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0 12px; }
+.actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.actions .btn span, .ver-row .btn span { display: inline-flex; }
+.file-btn { width: auto; margin: 0; color: var(--text); font-size: 14px; font-weight: 550; }
+.auto-w { width: auto; min-width: 110px; }
+.toggle-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ---------- 状态提示 ---------- */
+.msg { display: flex; align-items: flex-start; gap: 6px; margin: 12px 0 0; font-size: 13px; line-height: 1.5;
+  overflow-wrap: anywhere; }
+.msg.inline { margin: 0; align-items: center; }
+.msg.ok { color: var(--ok); }
+.msg.err { color: var(--late); }
+.msg.neutral { color: var(--text-soft); }
+.mi { display: inline-flex; width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; }
+.msg.inline .mi { margin-top: 0; }
+
+/* ---------- iOS 风格开关（label.switch > checkbox + 文本） ---------- */
+.switch { display: inline-flex; align-items: center; gap: 10px; margin: 0; width: auto; min-height: 40px;
+  font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; user-select: none; }
+.switch input { appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0;
+  width: 36px; height: 22px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 999px;
+  background: var(--border-strong); cursor: pointer; transition: background-color .2s var(--ease-out); }
+.switch input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  transition: transform .22s var(--ease-out); }
+.switch input:checked { background: var(--primary); }
+.switch input:checked::before { transform: translateX(14px); background: var(--on-primary); }
+.switch input:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ---------- 主题色板 ---------- */
+.theme-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.th { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px 6px; min-height: 40px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer;
+  font: inherit; color: var(--text-soft); transition: border-color .15s, background-color .15s, color .15s; }
+.th:hover { border-color: var(--border-strong); color: var(--text); }
+.th.on { border-color: var(--primary); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+.sw { position: relative; width: 34px; height: 24px; border-radius: var(--radius-xs);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); overflow: hidden; }
+.sw i { position: absolute; right: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 50%; }
+.th-n { font-size: 12px; font-weight: 550; line-height: 1.2; }
+
+/* ---------- 安全 ---------- */
+.sec-row { display: flex; justify-content: space-between; align-items: center; gap: 10px 12px; flex-wrap: wrap; }
+.sec-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inline-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 0; }
+.twofa-r .inline-form { margin-top: 10px; }
+.otp { width: 130px; font-family: var(--mono); letter-spacing: .1em; }
+.tk-name { width: 150px; }
+.twofa-box { display: flex; gap: 16px; align-items: flex-start; margin: 14px 0 0; flex-wrap: wrap;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.twofa-box .qr { width: 140px; height: 140px; border-radius: var(--radius-xs); background: #fff;
+  border: 1px solid var(--border); }
+.twofa-r { flex: 1; min-width: 180px; }
+.secret, .code { display: block; font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+  padding: 8px 10px; border-radius: var(--radius-xs); background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); overflow-wrap: anywhere; word-break: break-all; }
+.twofa-box .secret { background: var(--surface); }
+.token-once { margin-top: 4px; }
+.token-once .code { margin-top: 8px; }
+
+/* ---------- 列表（Token / 自动备份） ---------- */
+.item-list { list-style: none; padding: 0; margin: 12px 0 0; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden; }
+.item-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 8px 9px 12px; font-size: 13px; }
+.item-list li + li { border-top: 1px solid var(--border); }
+.il-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.il-main b { font-weight: 550; overflow-wrap: anywhere; }
+.il-main .muted { font-size: 12px; overflow-wrap: anywhere; }
+.item-list .btn span { display: inline-flex; }
+
+/* ---------- 汇率 ---------- */
+.rate-msg { color: var(--text); }
+.rate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.rate { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; background: var(--surface-2); }
+.rate-code { font-weight: 600; font-size: 13.5px; }
+.rate-val { font-size: 12.5px; color: var(--text); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* ---------- 日历 ---------- */
+.cal-url { margin-top: 12px; font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); }
+
+/* ---------- 版本 ---------- */
+.ver-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.ver { font-size: 14px; color: var(--text-soft); }
+.ver b { color: var(--text); margin-left: 4px; }
+.upd-box { margin-top: 12px; padding: 12px 14px; background: var(--surface-2); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); }
+.upd-how { font-size: 13px; margin: 0 0 8px; }
+.upd-box .code { background: var(--surface); }
+
+/* ---------- 系统信息：定义列表 ---------- */
+.kv { margin: 6px 0 0; }
+.kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 9px 0;
+  border-bottom: 1px solid var(--border); font-size: 14px; }
+.kv > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.kv dt { color: var(--text-soft); flex-shrink: 0; }
+.kv dd { margin: 0; text-align: right; font-weight: 550; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; min-width: 0; }
+.db-ok { display: inline-flex; align-items: center; gap: 7px; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .set-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .set-grid { gap: 12px; }
+  .pair { grid-template-columns: minmax(0, 1fr); }
+  .btn.sm { min-height: 40px; }
+  .btn.sm.icon { width: 40px; }
+  .actions .btn, .actions .file-btn { flex: 1 1 auto; }
+  .tk-name { flex: 1; width: auto; min-width: 0; }
+  .sec-row > .inline-form { width: 100%; flex-wrap: nowrap; }
+  .twofa-box { flex-direction: column; align-items: center; }
+  .twofa-r { width: 100%; min-width: 0; }
+  .otp { flex: 1; width: auto; min-width: 0; }
+}
 </style>

@@ -1,25 +1,27 @@
 <template>
   <div class="card sect notify">
     <div class="nc-head">
-      <div>
-        <h3>🔔 {{ t('notifyCfg.title') }}</h3>
-        <p class="muted" style="font-size:13px;margin:2px 0 0">Telegram / 飞书 / QQ / Bark / Email / Pushplus / Webhook</p>
+      <div class="nc-title">
+        <h3><span class="hi" v-html="icon('notifyCfg')"></span>{{ t('notifyCfg.title') }}</h3>
+        <p class="muted nc-sub">Telegram / 飞书 / QQ / Bark / Email / Pushplus / Webhook</p>
       </div>
-      <button class="btn" :disabled="saving" @click="save">💾 {{ t('notifyCfg.save') }}</button>
+      <button class="btn" :disabled="saving" @click="save"><span class="bi" v-html="icon('check')"></span>{{ t('notifyCfg.save') }}</button>
     </div>
 
-    <div class="tabs">
-      <button v-for="tb in tabs" :key="tb.key" class="tab" :class="{ on: tab === tb.key }" @click="tab = tb.key">
-        {{ tb.label }}<span v-if="cfg[tb.key] && cfg[tb.key].enabled" class="on-dot"></span>
+    <div class="tiles" role="tablist">
+      <button v-for="tb in tabs" :key="tb.key" type="button" role="tab" class="tile" :class="{ on: tab === tb.key }"
+              :aria-selected="tab === tb.key" @click="tab = tb.key">
+        <span class="tile-n">{{ tb.label }}</span>
+        <span class="dot" :class="{ ok: cfg[tb.key] && cfg[tb.key].enabled }"></span>
       </button>
     </div>
 
-    <div v-if="loaded" class="panel">
+    <div v-if="loaded" class="panel" role="tabpanel">
       <div class="ch-head">
         <h4>{{ enableLabel }}</h4>
         <div class="ch-actions">
-          <button class="btn ghost sm" :disabled="testing" @click="test(tab)">🔔 {{ t('notifyCfg.test') }}</button>
-          <label class="switch"><input type="checkbox" v-model="cfg[tab].enabled" /><span class="track"></span></label>
+          <button class="btn ghost sm" :disabled="testing" @click="test(tab)"><span class="bi" v-html="icon('send')"></span>{{ t('notifyCfg.test') }}</button>
+          <label class="switch" :title="enableLabel"><input type="checkbox" v-model="cfg[tab].enabled" :aria-label="enableLabel" /><span class="track"></span></label>
         </div>
       </div>
 
@@ -65,11 +67,11 @@
       <div v-else-if="tab === 'bark'" class="fields">
         <div class="f">
           <div class="f-h"><label>{{ t('notifyCfg.targetUrls') }}</label>
-            <button class="btn ghost xs" @click="cfg.bark.urls.push('')">+ URL</button></div>
-          <p v-if="!cfg.bark.urls.length" class="empty">{{ t('notifyCfg.noBarkUrl') }}</p>
+            <button class="btn ghost sm" @click="cfg.bark.urls.push('')"><span class="bi" v-html="icon('plus')"></span>URL</button></div>
+          <p v-if="!cfg.bark.urls.length" class="none">{{ t('notifyCfg.noBarkUrl') }}</p>
           <div v-for="(u, i) in cfg.bark.urls" :key="i" class="list-row">
             <input v-model="cfg.bark.urls[i]" placeholder="https://api.day.app/你的Key" />
-            <button class="x" @click="cfg.bark.urls.splice(i, 1)">✕</button>
+            <button class="x" aria-label="✕" @click="cfg.bark.urls.splice(i, 1)"><span v-html="icon('x')"></span></button>
           </div>
         </div>
         <div class="two">
@@ -88,7 +90,7 @@
         <div class="three">
           <div class="f"><label>SMTP {{ t('notifyCfg.host') }}</label><input v-model="cfg.email.host" placeholder="smtp.example.com" /></div>
           <div class="f"><label>SMTP {{ t('notifyCfg.port') }}</label><input v-model.number="cfg.email.port" type="number" /></div>
-          <div class="f sw"><label>SSL/TLS</label><label class="switch"><input type="checkbox" v-model="cfg.email.ssl" /><span class="track"></span></label></div>
+          <div class="f sw"><label>SSL/TLS</label><label class="switch"><input type="checkbox" v-model="cfg.email.ssl" aria-label="SSL/TLS" /><span class="track"></span></label></div>
         </div>
         <div class="two">
           <div class="f"><label>{{ t('notifyCfg.username') }}</label><input v-model="cfg.email.username" placeholder="邮箱账号" /></div>
@@ -121,12 +123,12 @@
       <div v-else-if="tab === 'wecom'" class="fields">
         <div class="f">
           <label>{{ t('notifyCfg.wecomMode') }}</label>
-          <div class="seg">
-            <button class="seg-b" :class="{ on: wecomMode === 'webhook' }" @click="cfg.wecom.mode = 'webhook'">
-              🤖 {{ t('notifyCfg.wecomModeRobot') }}
+          <div class="seg wide">
+            <button type="button" class="seg-b" :class="{ on: wecomMode === 'webhook' }" @click="cfg.wecom.mode = 'webhook'">
+              {{ t('notifyCfg.wecomModeRobot') }}
             </button>
-            <button class="seg-b" :class="{ on: wecomMode === 'app' }" @click="cfg.wecom.mode = 'app'">
-              🏢 {{ t('notifyCfg.wecomModeApp') }}
+            <button type="button" class="seg-b" :class="{ on: wecomMode === 'app' }" @click="cfg.wecom.mode = 'app'">
+              {{ t('notifyCfg.wecomModeApp') }}
             </button>
           </div>
           <small class="muted">{{ wecomMode === 'app' ? t('notifyCfg.wecomModeAppTip') : t('notifyCfg.wecomModeRobotTip') }}</small>
@@ -150,7 +152,7 @@
             <div class="f"><label>{{ t('notifyCfg.wecomSecret') }}</label>
               <input v-model="cfg.wecom.secret" type="password" placeholder="应用 Secret" /></div>
           </div>
-          <small class="muted" style="margin-top:-6px">{{ t('notifyCfg.wecomAgentHint') }}</small>
+          <small class="muted pull-up">{{ t('notifyCfg.wecomAgentHint') }}</small>
           <div class="f"><label>{{ t('notifyCfg.wecomProxy') }}</label>
             <input v-model="cfg.wecom.proxy_base" placeholder="https://qyapi.weixin.qq.com（留空用官方域名）" />
             <small class="muted">{{ t('notifyCfg.wecomProxyHint') }}</small></div>
@@ -174,24 +176,25 @@
           </div>
           <div class="row">
             <button class="btn ghost sm" :disabled="checking" @click="wecomCheck">
-              🔍 {{ t('notifyCfg.wecomCheck') }}
+              <span class="bi" v-html="icon('search')"></span>{{ t('notifyCfg.wecomCheck') }}
             </button>
           </div>
         </template>
 
         <!-- Web 端配置说明 -->
-        <div class="help">
-          <button class="help-h" @click="wecomHelp = !wecomHelp">
-            <span>📖 {{ t('notifyCfg.wecomGuide') }}</span><span>{{ wecomHelp ? '▲' : '▼' }}</span>
+        <div class="help" :class="{ open: wecomHelp }">
+          <button type="button" class="help-h" :aria-expanded="wecomHelp" @click="wecomHelp = !wecomHelp">
+            <span class="help-t"><span class="hi sm" v-html="icon('library')"></span>{{ t('notifyCfg.wecomGuide') }}</span>
+            <span class="chev" v-html="icon('chevron')"></span>
           </button>
           <div v-show="wecomHelp" class="help-b">
             <ol>
               <li v-for="(s, i) in (wecomMode === 'app' ? wecomSteps : wecomRobotSteps)" :key="i" v-html="s"></li>
             </ol>
             <template v-if="wecomMode === 'app'">
-              <p class="warn">⚠️ {{ t('notifyCfg.wecomIpWarn') }}</p>
+              <p class="warn"><span class="hi sm" v-html="icon('alert')"></span><span>{{ t('notifyCfg.wecomIpWarn') }}</span></p>
               <details>
-                <summary>{{ t('notifyCfg.wecomProxyExample') }}</summary>
+                <summary><span class="chev" v-html="icon('chevron')"></span>{{ t('notifyCfg.wecomProxyExample') }}</summary>
                 <pre>{{ nginxSnippet }}</pre>
                 <p class="muted">{{ t('notifyCfg.wecomSocatTip') }}</p>
                 <pre>{{ socatSnippet }}</pre>
@@ -240,33 +243,33 @@
           <div class="f"><label>{{ t('notifyCfg.server') }}</label><input v-model="cfg.gotify.server" placeholder="https://gotify.example.com" /></div>
           <div class="f"><label>App Token</label><input v-model="cfg.gotify.token" placeholder="应用 Token" /></div>
         </div>
-        <div class="f" style="max-width:160px"><label>{{ t('notifyCfg.priority') }}</label><input v-model.number="cfg.gotify.priority" type="number" /></div>
+        <div class="f narrow"><label>{{ t('notifyCfg.priority') }}</label><input v-model.number="cfg.gotify.priority" type="number" /></div>
       </div>
 
       <!-- Webhook -->
       <div v-else-if="tab === 'webhook'" class="fields">
         <div class="f">
           <div class="f-h"><label>{{ t('notifyCfg.targetUrls') }}</label>
-            <button class="btn ghost xs" @click="cfg.webhook.urls.push('')">+ URL</button></div>
-          <p v-if="!cfg.webhook.urls.length" class="empty">{{ t('notifyCfg.noWebhookUrl') }}</p>
+            <button class="btn ghost sm" @click="cfg.webhook.urls.push('')"><span class="bi" v-html="icon('plus')"></span>URL</button></div>
+          <p v-if="!cfg.webhook.urls.length" class="none">{{ t('notifyCfg.noWebhookUrl') }}</p>
           <div v-for="(u, i) in cfg.webhook.urls" :key="i" class="list-row">
             <input v-model="cfg.webhook.urls[i]" placeholder="https://example.com/hook" />
-            <button class="x" @click="cfg.webhook.urls.splice(i, 1)">✕</button>
+            <button class="x" aria-label="✕" @click="cfg.webhook.urls.splice(i, 1)"><span v-html="icon('x')"></span></button>
           </div>
         </div>
         <div class="f"><label>{{ t('notifyCfg.whSecret') }}</label><input v-model="cfg.webhook.secret" placeholder="HMAC-SHA256 签名密钥，选填" />
           <small class="muted">{{ t('notifyCfg.whSecretHint') }}</small></div>
         <div class="f">
           <div class="f-h"><label>{{ t('notifyCfg.whHeaders') }}</label>
-            <button class="btn ghost xs" @click="cfg.webhook.headers.push({ key: '', value: '' })">+ Header</button></div>
-          <div v-for="(h, i) in cfg.webhook.headers" :key="i" class="list-row">
-            <input v-model="h.key" placeholder="Authorization" style="flex:1" />
-            <input v-model="h.value" placeholder="值" style="flex:1.4" />
-            <button class="x" @click="cfg.webhook.headers.splice(i, 1)">✕</button>
+            <button class="btn ghost sm" @click="cfg.webhook.headers.push({ key: '', value: '' })"><span class="bi" v-html="icon('plus')"></span>Header</button></div>
+          <div v-for="(h, i) in cfg.webhook.headers" :key="i" class="list-row hdr">
+            <input v-model="h.key" placeholder="Authorization" class="hk" />
+            <input v-model="h.value" placeholder="值" class="hv" />
+            <button class="x" aria-label="✕" @click="cfg.webhook.headers.splice(i, 1)"><span v-html="icon('x')"></span></button>
           </div>
         </div>
         <div class="f"><label>{{ t('notifyCfg.whTemplate') }}</label>
-          <textarea v-model="cfg.webhook.template" rows="2" :placeholder="tplPlaceholder"></textarea>
+          <textarea v-model="cfg.webhook.template" rows="2" class="mono" :placeholder="tplPlaceholder"></textarea>
           <small class="muted">{{ t('notifyCfg.whTemplateHint') }}</small></div>
         <div class="two">
           <div class="f"><label>{{ t('notifyCfg.whTimeout') }}</label><input v-model.number="cfg.webhook.timeout_ms" type="number" /></div>
@@ -274,7 +277,9 @@
         </div>
       </div>
 
-      <p v-if="msg" :class="ok ? 'ok' : 'err'">{{ msg }}</p>
+      <p v-if="msg" class="msg" :class="ok ? 'ok' : 'err'" role="status">
+        <span class="mi" v-html="icon(ok ? 'check' : 'alert')"></span><span>{{ msg }}</span>
+      </p>
     </div>
     <p v-else class="muted">{{ t('common.loading') }}</p>
   </div>
@@ -284,6 +289,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '../api'
+import { icon } from '../icons'
 
 const { t } = useI18n()
 const tab = ref('telegram')
@@ -415,66 +421,118 @@ onMounted(load)
 </script>
 
 <style scoped>
-.notify h3 { margin: 0; }
-.nc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-.nc-head .btn { width: auto; }
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; padding: 6px; background: var(--surface-2); border-radius: 12px; }
-.tab { border: none; background: transparent; padding: 7px 13px; border-radius: 9px; cursor: pointer; font-size: 13px;
-  color: var(--text-soft); display: inline-flex; align-items: center; gap: 6px; }
-.tab.on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-.on-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
-.ch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.ch-head h4 { margin: 0; font-size: 16px; }
+/* ---------- 头部 ---------- */
+.nc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.nc-title { min-width: 0; }
+.notify h3 { display: flex; align-items: center; gap: 9px; margin: 0; }
+.nc-sub { font-size: 13px; margin: 4px 0 0; overflow-wrap: anywhere; }
+.hi { display: inline-flex; width: 18px; height: 18px; flex-shrink: 0; color: var(--text-soft); }
+.hi.sm { width: 15px; height: 15px; }
+.bi { display: inline-flex; }
+
+/* ---------- 渠道磁贴 ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px; margin-bottom: 14px; }
+.tile { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px;
+  padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text-soft); font: inherit; font-size: 13px; font-weight: 550; text-align: left; cursor: pointer;
+  transition: border-color .15s, background-color .15s, color .15s; }
+.tile:hover { border-color: var(--border-strong); color: var(--text); }
+.tile.on { border-color: var(--primary); background: var(--primary-soft); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--primary); }
+.tile:focus-visible { outline: none; box-shadow: var(--focus); }
+.tile-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .dot { width: 7px; height: 7px; }
+
+/* ---------- 子面板（非嵌套卡片） ---------- */
+.panel { padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.ch-head { display: flex; justify-content: space-between; align-items: center; gap: 10px 14px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.ch-head h4 { margin: 0; font-size: 15px; font-weight: 650; }
 .ch-actions { display: flex; align-items: center; gap: 12px; }
-.fields { display: flex; flex-direction: column; gap: 13px; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
-.three { display: grid; grid-template-columns: 1fr 1fr auto; gap: 13px; align-items: end; }
-.f { display: flex; flex-direction: column; gap: 5px; }
+
+/* ---------- 字段 ---------- */
+.fields { display: flex; flex-direction: column; gap: 14px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.three { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 14px; align-items: end; }
+.three-e { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .f.sw { align-items: flex-start; }
-.f label { font-size: 12px; font-weight: 600; color: var(--text-soft); letter-spacing: .03em; }
-.f-h { display: flex; justify-content: space-between; align-items: center; }
-.f small { font-size: 12px; }
-.empty { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; text-align: center; color: var(--text-soft); font-size: 13px; margin: 0; }
+.f.narrow { max-width: 160px; }
+.f label { margin: 0; font-size: 13px; font-weight: 500; color: var(--text-soft); }
+.f-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.f small, .fields > small { font-size: 12.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.pull-up { margin-top: -6px; }
+.mono { font-family: var(--mono); font-size: 13px; }
+.none { margin: 0; padding: 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+  text-align: center; color: var(--text-soft); font-size: 13px; }
 .list-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-.list-row input { flex: 1; }
-.x { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; cursor: pointer; color: var(--danger); flex-shrink: 0; }
-.btn.sm { width: auto; padding: 7px 12px; font-size: 13px; }
-.btn.xs { width: auto; padding: 4px 10px; font-size: 12px; }
+.list-row input { flex: 1; min-width: 0; }
+.list-row.hdr .hk { flex: 1; }
+.list-row.hdr .hv { flex: 1.4; }
+.x { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px;
+  padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  color: var(--text-soft); cursor: pointer; transition: color .15s, border-color .15s, background-color .15s; }
+.x span { display: inline-flex; width: 16px; height: 16px; }
+.x:hover { color: var(--late); border-color: color-mix(in srgb, var(--late) 35%, var(--border)); background: var(--late-soft); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
-.switch { display: inline-flex; align-items: center; cursor: pointer; }
-.switch input { display: none; }
-.switch .track { width: 42px; height: 24px; border-radius: 12px; background: var(--border); position: relative; transition: background .2s; }
-.switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; }
+
+/* ---------- 开关（复选框保留在 DOM 中，可聚焦） ---------- */
+.switch { position: relative; display: inline-flex; align-items: center; margin: 0; min-height: 40px; cursor: pointer; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: 0; cursor: pointer; }
+.switch .track { position: relative; width: 36px; height: 22px; border-radius: 999px; background: var(--border-strong);
+  transition: background-color .2s var(--ease-out); pointer-events: none; }
+.switch .track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .22s var(--ease-out); }
 .switch input:checked + .track { background: var(--primary); }
-.switch input:checked + .track::after { transform: translateX(18px); }
-.ok { color: var(--success); font-size: 13px; }
-.err { color: var(--danger); font-size: 13px; word-break: break-all; }
-/* 企业微信：模式切换 + 配置说明 */
-.three-e { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
-.seg { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: 11px; }
-.seg-b { flex: 1; border: none; background: transparent; padding: 9px 12px; border-radius: 8px;
-  cursor: pointer; font-size: 13px; color: var(--text-soft); transition: all .18s; }
-.seg-b:hover { color: var(--primary); }
-.seg-b.on { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-.help { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface-2); }
-.help-h { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  border: none; background: transparent; padding: 11px 14px; cursor: pointer; font-size: 13px;
-  font-weight: 600; color: var(--text-soft); }
-.help-b { padding: 0 14px 14px; font-size: 12.5px; line-height: 1.75; color: var(--text-soft); }
+.switch input:checked + .track::after { transform: translateX(14px); background: var(--on-primary); }
+.switch input:focus-visible + .track { box-shadow: var(--focus); }
+
+/* ---------- 状态 ---------- */
+.msg { display: flex; align-items: flex-start; gap: 6px; margin: 14px 0 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.msg.ok { color: var(--ok); }
+.msg.err { color: var(--late); }
+.mi { display: inline-flex; width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; }
+
+/* ---------- 企业微信：模式切换 ---------- */
+.seg.wide { display: flex; width: 100%; }
+.seg.wide .seg-b { flex: 1; min-height: 36px; white-space: normal; line-height: 1.3; }
+
+/* ---------- 配置说明（安静的折叠区） ---------- */
+.help { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.help-h { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 42px;
+  border: none; background: transparent; padding: 0 14px; cursor: pointer; font: inherit; font-size: 13px;
+  font-weight: 550; color: var(--text-soft); text-align: left; border-radius: var(--radius-sm); }
+.help-h:hover { color: var(--text); }
+.help-t { display: inline-flex; align-items: center; gap: 8px; }
+.chev { display: inline-flex; width: 15px; height: 15px; flex-shrink: 0; color: var(--text-faint);
+  transition: transform .2s var(--ease-out); }
+.help.open > .help-h .chev { transform: rotate(90deg); }
+.help-b { padding: 2px 14px 14px; font-size: 13px; line-height: 1.75; color: var(--text-soft); overflow-wrap: anywhere; }
 .help-b ol { margin: 0 0 10px; padding-left: 20px; }
-.help-b li { margin-bottom: 5px; }
-.help-b :deep(b) { color: var(--text); }
-.help-b .warn { margin: 0 0 10px; padding: 9px 11px; border-radius: 9px;
-  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
-  border-left: 3px solid var(--warning, #f59e0b); color: var(--text); }
-.help-b details { margin-bottom: 8px; }
-.help-b summary { cursor: pointer; color: var(--primary); user-select: none; }
-.help-b pre { margin: 8px 0; padding: 10px 12px; border-radius: 9px; background: var(--surface);
-  border: 1px solid var(--border); overflow-x: auto; font-size: 11.5px; line-height: 1.6;
-  white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.help-b li { margin-bottom: 4px; }
+.help-b :deep(b) { color: var(--text); font-weight: 600; }
+.help-b .warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 9px 11px;
+  border-radius: var(--radius-xs); background: var(--soon-soft); color: var(--text); }
+.help-b .warn .hi { color: var(--soon); margin-top: 4px; }
+.help-b details { margin: 0 0 8px; }
+.help-b summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; cursor: pointer;
+  color: var(--text); font-weight: 550; user-select: none; list-style: none; }
+.help-b summary::-webkit-details-marker { display: none; }
+.help-b details[open] > summary .chev { transform: rotate(90deg); }
+.help-b pre { margin: 8px 0; padding: 10px 12px; border-radius: var(--radius-xs); background: var(--surface-2);
+  border: 1px solid var(--border); overflow-x: auto; font-size: 12px; line-height: 1.6; color: var(--text);
+  white-space: pre; font-family: var(--mono); max-width: 100%; }
 .help-b p { margin: 6px 0 0; }
+
 @media (max-width: 720px) {
-  .two, .three, .three-e { grid-template-columns: 1fr; }
-  .seg { flex-direction: column; }
+  .nc-head > .btn { width: 100%; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel { padding: 14px; }
+  .two, .three, .three-e { grid-template-columns: minmax(0, 1fr); }
+  .f.narrow { max-width: none; }
+  .btn.sm { min-height: 40px; }
+  .ch-actions { width: 100%; justify-content: space-between; }
+  .list-row.hdr { flex-wrap: wrap; }
+  .list-row.hdr .hk, .list-row.hdr .hv { flex: 1 1 40%; }
 }
 </style>

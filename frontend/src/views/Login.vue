@@ -1,94 +1,125 @@
 <template>
-  <div class="auth-wrap">
-    <div class="card auth-card">
-      <div class="logo">🔔</div>
-      <h2>{{ t('app.title') }}</h2>
-      <p class="tag muted">{{ t('app.tagline') }}</p>
+  <div class="auth">
+    <!-- 品牌面板 -->
+    <aside class="brand">
+      <div class="brand-in">
+        <div class="wordmark"><span class="mark"><i></i></span><span>EasySub</span></div>
+        <p class="tagline">{{ t('app.tagline') }}</p>
 
-      <!-- 登录 / 注册 -->
-      <template v-if="step === 'form'">
-        <div class="seg">
-          <button :class="{ on: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
-          <button :class="{ on: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
+        <!-- 签名插画：几条正在走完的续费周期（纯装饰） -->
+        <div class="demo" aria-hidden="true">
+          <div class="demo-row">
+            <span class="dot ok"></span><span class="demo-l">SIM</span>
+            <div class="life"><i style="width:78%"></i></div>
+          </div>
+          <div class="demo-row">
+            <span class="dot ok"></span><span class="demo-l">Music</span>
+            <div class="life"><i style="width:52%;--d:120ms"></i></div>
+          </div>
+          <div class="demo-row">
+            <span class="dot soon"></span><span class="demo-l">VPS</span>
+            <div class="life soon"><i style="width:18%;--d:240ms"></i></div>
+          </div>
+          <div class="demo-row">
+            <span class="dot late"></span><span class="demo-l">Cloud</span>
+            <div class="life late"><i style="--d:360ms"></i></div>
+          </div>
         </div>
+      </div>
+    </aside>
 
-        <label>{{ t('auth.username') }}</label>
-        <input v-model="username" @keyup.enter="submit" />
+    <!-- 表单 -->
+    <main class="pane">
+      <div class="card form">
+        <!-- 登录 / 注册 -->
+        <template v-if="step === 'form'">
+          <div class="seg full">
+            <button :class="{ on: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
+            <button :class="{ on: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
+          </div>
 
-        <template v-if="mode === 'register'">
-          <label>{{ t('auth.email') }}</label>
-          <input v-model="email" type="email" />
+          <label for="au-user">{{ t('auth.username') }}</label>
+          <input id="au-user" v-model="username" autocomplete="username" @keyup.enter="submit" />
+
+          <template v-if="mode === 'register'">
+            <label for="au-email">{{ t('auth.email') }}</label>
+            <input id="au-email" v-model="email" type="email" autocomplete="email" />
+          </template>
+
+          <label for="au-pwd">{{ t('auth.password') }}</label>
+          <input id="au-pwd" v-model="password" type="password"
+            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" @keyup.enter="submit" />
+
+          <template v-if="need2fa">
+            <label for="au-otp">{{ t('auth.otp') }}</label>
+            <input id="au-otp" v-model="otp" class="code" :placeholder="t('auth.otpPh')" maxlength="6"
+              inputmode="numeric" autocomplete="one-time-code" @keyup.enter="submit" />
+          </template>
+
+          <p v-if="error" class="note late" role="alert">{{ error }}</p>
+          <p v-if="info" class="note ok" role="status">{{ info }}</p>
+          <button class="btn block" :disabled="busy" @click="submit">
+            {{ mode === 'login' ? t('auth.loginBtn') : t('auth.registerBtn') }}
+          </button>
+          <a v-if="mode === 'login'" href="#" class="back" @click.prevent="step = 'forgot'">{{ t('auth.forgot') }}</a>
         </template>
 
-        <label>{{ t('auth.password') }}</label>
-        <input v-model="password" type="password" @keyup.enter="submit" />
-
-        <template v-if="need2fa">
-          <label>{{ t('auth.otp') }}</label>
-          <input v-model="otp" :placeholder="t('auth.otpPh')" maxlength="6" @keyup.enter="submit" />
+        <!-- 忘记密码：发码 -->
+        <template v-else-if="step === 'forgot'">
+          <h2 class="step-t"><span class="ico" v-html="icon('mail')"></span>{{ t('auth.forgotTitle') }}</h2>
+          <p class="hint">{{ t('auth.forgotTip') }}</p>
+          <label for="au-femail">{{ t('auth.email') }}</label>
+          <input id="au-femail" v-model="email" type="email" autocomplete="email" @keyup.enter="doForgot" />
+          <p v-if="error" class="note late" role="alert">{{ error }}</p>
+          <p v-if="info" class="note ok" role="status">{{ info }}</p>
+          <button class="btn block" :disabled="busy" @click="doForgot">{{ t('auth.sendCode') }}</button>
+          <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
         </template>
 
-        <p v-if="error" class="err">{{ error }}</p>
-        <p v-if="info" class="ok">{{ info }}</p>
-        <button class="btn" style="width:100%;margin-top:16px" :disabled="busy" @click="submit">
-          {{ mode === 'login' ? t('auth.loginBtn') : t('auth.registerBtn') }}
-        </button>
-        <a v-if="mode === 'login'" href="#" class="back" @click.prevent="step = 'forgot'">{{ t('auth.forgot') }}</a>
-      </template>
+        <!-- 忘记密码：重置 -->
+        <template v-else-if="step === 'reset'">
+          <h2 class="step-t"><span class="ico" v-html="icon('edit')"></span>{{ t('auth.resetTitle') }}</h2>
+          <label for="au-rcode">{{ t('auth.code') }}</label>
+          <input id="au-rcode" v-model="code" class="code" :placeholder="t('auth.codePh')" maxlength="6"
+            inputmode="numeric" autocomplete="one-time-code" />
+          <label for="au-npwd">{{ t('auth.newPassword') }}</label>
+          <input id="au-npwd" v-model="password" type="password" autocomplete="new-password" @keyup.enter="doReset" />
+          <p v-if="error" class="note late" role="alert">{{ error }}</p>
+          <p v-if="info" class="note ok" role="status">{{ info }}</p>
+          <button class="btn block" :disabled="busy" @click="doReset">{{ t('auth.resetBtn') }}</button>
+          <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
+        </template>
 
-      <!-- 忘记密码：发码 -->
-      <template v-else-if="step === 'forgot'">
-        <h3 class="step-t">🔑 {{ t('auth.forgotTitle') }}</h3>
-        <p class="muted hint">{{ t('auth.forgotTip') }}</p>
-        <label>{{ t('auth.email') }}</label>
-        <input v-model="email" type="email" @keyup.enter="doForgot" />
-        <p v-if="error" class="err">{{ error }}</p>
-        <p v-if="info" class="ok">{{ info }}</p>
-        <button class="btn" style="width:100%;margin-top:16px" :disabled="busy" @click="doForgot">{{ t('auth.sendCode') }}</button>
-        <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-      </template>
+        <!-- 邮箱验证码 -->
+        <template v-else-if="step === 'verify'">
+          <h2 class="step-t"><span class="ico" v-html="icon('mail')"></span>{{ t('auth.verifyTitle') }}</h2>
+          <p class="hint">{{ t('auth.verifyTip', { email }) }}</p>
+          <label for="au-vcode">{{ t('auth.code') }}</label>
+          <input id="au-vcode" v-model="code" class="code" :placeholder="t('auth.codePh')" maxlength="6"
+            inputmode="numeric" autocomplete="one-time-code" @keyup.enter="doVerify" />
+          <p v-if="error" class="note late" role="alert">{{ error }}</p>
+          <button class="btn block" :disabled="busy" @click="doVerify">
+            {{ t('auth.verifyBtn') }}
+          </button>
+          <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
+        </template>
 
-      <!-- 忘记密码：重置 -->
-      <template v-else-if="step === 'reset'">
-        <h3 class="step-t">🔑 {{ t('auth.resetTitle') }}</h3>
-        <label>{{ t('auth.code') }}</label>
-        <input v-model="code" :placeholder="t('auth.codePh')" maxlength="6" />
-        <label>{{ t('auth.newPassword') }}</label>
-        <input v-model="password" type="password" @keyup.enter="doReset" />
-        <p v-if="error" class="err">{{ error }}</p>
-        <p v-if="info" class="ok">{{ info }}</p>
-        <button class="btn" style="width:100%;margin-top:16px" :disabled="busy" @click="doReset">{{ t('auth.resetBtn') }}</button>
-        <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-      </template>
-
-      <!-- 邮箱验证码 -->
-      <template v-else-if="step === 'verify'">
-        <h3 class="step-t">📧 {{ t('auth.verifyTitle') }}</h3>
-        <p class="muted hint">{{ t('auth.verifyTip', { email }) }}</p>
-        <label>{{ t('auth.code') }}</label>
-        <input v-model="code" :placeholder="t('auth.codePh')" maxlength="6" @keyup.enter="doVerify" />
-        <p v-if="error" class="err">{{ error }}</p>
-        <button class="btn" style="width:100%;margin-top:16px" :disabled="busy" @click="doVerify">
-          {{ t('auth.verifyBtn') }}
-        </button>
-        <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-      </template>
-
-      <!-- 等待审核 -->
-      <template v-else-if="step === 'pending'">
-        <h3 class="step-t">⏳ {{ t('auth.pendingTitle') }}</h3>
-        <p class="muted hint">{{ info || t('auth.pendingMsg') }}</p>
-        <button class="btn" style="width:100%;margin-top:16px" @click="backToLogin">
-          {{ t('auth.backToLogin') }}
-        </button>
-      </template>
+        <!-- 等待审核 -->
+        <template v-else-if="step === 'pending'">
+          <h2 class="step-t"><span class="ico soon" v-html="icon('clock')"></span>{{ t('auth.pendingTitle') }}</h2>
+          <p class="hint">{{ info || t('auth.pendingMsg') }}</p>
+          <button class="btn block" @click="backToLogin">
+            {{ t('auth.backToLogin') }}
+          </button>
+        </template>
+      </div>
 
       <div class="lang">
-        <a href="#" @click.prevent="setLang('zh')">中文</a> ·
-        <a href="#" @click.prevent="setLang('en')">EN</a> ·
-        <a href="#" @click.prevent="setLang('ru')">RU</a>
+        <button :class="{ on: locale === 'zh' }" @click="setLang('zh')">中文</button>
+        <button :class="{ on: locale === 'en' }" @click="setLang('en')">EN</button>
+        <button :class="{ on: locale === 'ru' }" @click="setLang('ru')">RU</button>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -97,6 +128,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../stores/auth'
+import { icon } from '../icons'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -197,21 +229,69 @@ async function doVerify() {
 </script>
 
 <style scoped>
-.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: radial-gradient(1200px 600px at 50% -10%, var(--primary-soft), transparent 60%); }
-.auth-card { width: 380px; max-width: 92vw; text-align: center; }
-.logo { font-size: 40px; }
-h2 { margin: 8px 0 4px; }
-.tag { font-size: 13px; margin: 0 0 14px; }
-.step-t { margin: 8px 0 6px; }
-.hint { font-size: 13px; line-height: 1.6; }
-.seg { display: flex; background: var(--bg); border-radius: 8px; padding: 4px; margin-bottom: 8px; }
-.seg button { flex: 1; border: none; background: transparent; padding: 8px; border-radius: 6px;
-  cursor: pointer; color: var(--text-soft); }
-.seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
-label { text-align: left; }
-.err { color: var(--danger); font-size: 13px; margin-top: 10px; }
-.ok { color: var(--success); font-size: 13px; margin-top: 10px; }
-.back { display: block; margin-top: 14px; font-size: 13px; }
-.lang { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-soft); }
+.auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--bg); }
+
+/* ---- 品牌面板 ---- */
+.brand { background: var(--surface-2); border-right: 1px solid var(--border); display: flex; align-items: center;
+  justify-content: center; padding: 48px 40px; min-width: 0; }
+.brand-in { width: 100%; max-width: 400px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; letter-spacing: -.02em; }
+.mark { width: 30px; height: 30px; border-radius: 9px; background: var(--primary); display: inline-flex;
+  align-items: center; padding: 0 6px; flex-shrink: 0; }
+.mark i { display: block; height: 4px; width: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--ok-bar) 0 62%, color-mix(in srgb, var(--on-primary) 28%, transparent) 62%); }
+.tagline { font-size: 30px; line-height: 1.18; font-weight: 650; letter-spacing: -.025em; margin: 28px 0 36px; }
+
+.demo { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 18px; box-shadow: var(--shadow); }
+.demo-row { display: grid; grid-template-columns: 8px 52px minmax(0, 1fr); align-items: center; gap: 10px;
+  padding: 13px 0; border-bottom: 1px solid var(--border); }
+.demo-row:last-child { border-bottom: 0; }
+.demo-l { font-size: 13px; font-weight: 550; color: var(--text-soft); }
+.demo .life > i[style*="width"] { right: auto; }
+
+/* ---- 表单面板 ---- */
+.pane { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 24px; gap: 16px; min-width: 0; }
+.form { width: 100%; max-width: 380px; padding: 26px; }
+.seg.full { display: flex; width: 100%; margin-bottom: 6px; }
+.seg.full button { flex: 1; min-height: 36px; }
+.step-t { display: flex; align-items: center; gap: 10px; font-size: 18px; margin: 0 0 8px; }
+.ico { display: inline-flex; width: 30px; height: 30px; border-radius: var(--radius-xs); align-items: center;
+  justify-content: center; background: var(--surface-2); color: var(--text); flex-shrink: 0; }
+.ico.soon { background: var(--soon-soft); color: var(--soon); }
+.ico :deep(svg) { width: 16px; height: 16px; }
+.hint { font-size: 13.5px; line-height: 1.6; color: var(--text-soft); margin: 0 0 4px; overflow-wrap: anywhere; }
+.code { font-family: var(--mono); letter-spacing: .2em; font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; line-height: 1.5; margin: 12px 0 0; padding: 8px 11px; border-radius: var(--radius-xs);
+  overflow-wrap: anywhere; }
+.note.late { background: var(--late-soft); color: var(--late); }
+.note.ok { background: var(--ok-soft); color: var(--ok); }
+.btn.block { width: 100%; margin-top: 18px; min-height: 42px; }
+.back { display: inline-flex; align-items: center; min-height: 40px; margin-top: 6px; font-size: 13px; color: var(--text-soft); }
+.back:hover { color: var(--text); }
+
+.lang { display: flex; gap: 2px; }
+.lang button { border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--text-soft);
+  min-height: 40px; min-width: 44px; padding: 0 10px; border-radius: var(--radius-xs); cursor: pointer;
+  transition: background-color .15s, color .15s; }
+.lang button:hover { color: var(--text); background: var(--surface-2); }
+.lang button.on { color: var(--text); font-weight: 650; }
+
+/* ---- 移动端：单列，品牌在上 ---- */
+@media (max-width: 860px) {
+  .auth { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .brand { border-right: 0; border-bottom: 1px solid var(--border); padding: 28px 20px 24px; }
+  .brand-in { max-width: 420px; }
+  .tagline { font-size: 22px; margin: 16px 0 20px; }
+  .pane { justify-content: flex-start; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .form { max-width: 420px; }
+}
+@media (max-width: 720px) {
+  .brand { padding: 22px 16px 18px; }
+  .tagline { margin: 12px 0 0; font-size: 20px; }
+  .demo { display: none; }
+  .form { padding: 20px 18px; }
+  .seg.full button { min-height: 40px; }
+}
 </style>
