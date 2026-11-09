@@ -80,6 +80,8 @@ const zh = {
     pendingTab: '待审核 ({n})', allTab: '全部用户', noPending: '没有待审核的用户'
   },
   auth: {
+    resendSent: '若账号尚未验证，验证码将发送到邮箱，请查收（重发间隔 60 秒）。',
+    resendCode: '重新发送验证码（60 秒后可重发）',
     login: '登录', register: '注册', username: '用户名', email: '邮箱', password: '密码',
     loginBtn: '登录', registerBtn: '注册', noAccount: '没有账户？去注册', hasAccount: '已有账户？去登录',
     loginFail: '用户名或密码错误', welcome: '欢迎回来',
@@ -121,7 +123,14 @@ const zh = {
     expiredTag: '已过期', soonTag: '即将到期', uncategorized: '未分类', dragHint: '拖动卡片可排序，拖动分类标题可调整分类顺序',
     deleteTitle: '删除订阅', deletePwdTip: '为防止误删，请输入你的登录密码以确认删除「{name}」', pwdPh: '登录密码',
     remark: '个性化备注', remarkPh: '如：家庭主力机 / 香港 CN2（会显示在卡片上）',
-    ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP 地址（选填）', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: '排序', selectMode: '多选', done: '完成', moveUp: '上移', moveDown: '下移',
+    moveCatUp: '上移分类「{name}」', moveCatDown: '下移分类「{name}」', sortHint: '用上移 / 下移按钮调整顺序，改动即时保存',
+    selectOne: '选择「{name}」', selectedN: '已选 {n} 项', selectAll: '全选', selectNone: '取消全选',
+    enable: '启用', disable: '停用', moveToCat: '移到分类…',
+    bulkRenewMsg: '为选中的 {n} 个周期订阅选择续费方式（一次性买断项目会跳过）：',
+    bulkDeleteTip: '将删除选中的 {n} 个订阅，无法撤销。请输入登录密码确认。',
+    bulkDone: '已完成 {n} 项', bulkPartial: '完成 {ok} 项，失败 {fail} 项'
   },
   calendar: { title: '续费日历', noEvents: '本月无续费', noEventsDay: '当天无续费', today: '今天', more: '还有 {n} 项' },
   reports: {
@@ -150,6 +159,7 @@ const zh = {
     exportOk: '备份已下载', importOk: '已成功导入 {n} 个订阅', importFail: '导入失败：文件格式不正确', notJson: '导入失败：这不是有效的 JSON 备份文件', httpFail: '导入失败：服务器返回 {s} {m}', netFail: '导入失败：无法连接服务器，请检查网络或反向代理'
   },
   backupAll: {
+    passwordLabel: '整站备份密码', passwordHint: '至少 12 位。导出和恢复使用同一密码，请另行妥善保存。', passwordRequired: '自动备份已暂停：请由管理员配置 BACKUP_PASSWORD（至少 12 位）。',
     title: '整站备份与恢复（管理员）',
     tip: '导出全部成员的账户与数据为一个 JSON 文件；重新部署后导入即可整站恢复所有用户的订阅、分类等。',
     export: '导出整站备份', import: '导入整站恢复', replace: '每个用户导入前清空其现有订阅',
@@ -266,6 +276,8 @@ const en = {
     pendingTab: 'Pending ({n})', allTab: 'All users', noPending: 'No users awaiting approval'
   },
   auth: {
+    resendSent: 'If the account is unverified, a code will be emailed. Please wait 60 seconds before resending.',
+    resendCode: 'Resend code (60-second cooldown)',
     login: 'Login', register: 'Register', username: 'Username', email: 'Email', password: 'Password',
     loginBtn: 'Sign in', registerBtn: 'Sign up', noAccount: 'No account? Register', hasAccount: 'Have an account? Login',
     loginFail: 'Wrong username or password', welcome: 'Welcome back',
@@ -307,7 +319,14 @@ const en = {
     expiredTag: 'Expired', soonTag: 'Due soon', uncategorized: 'Uncategorized', dragHint: 'Drag cards to reorder; drag a category header to reorder categories',
     deleteTitle: 'Delete subscription', deletePwdTip: 'To prevent mistakes, enter your login password to delete "{name}"', pwdPh: 'Login password',
     remark: 'Personal note', remarkPh: 'e.g. main box / HK CN2 (shown on card)',
-    ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP address (optional)', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: 'Reorder', selectMode: 'Select', done: 'Done', moveUp: 'Move up', moveDown: 'Move down',
+    moveCatUp: 'Move category "{name}" up', moveCatDown: 'Move category "{name}" down', sortHint: 'Use the up / down buttons to reorder; changes save instantly',
+    selectOne: 'Select "{name}"', selectedN: '{n} selected', selectAll: 'Select all', selectNone: 'Clear selection',
+    enable: 'Enable', disable: 'Disable', moveToCat: 'Move to category…',
+    bulkRenewMsg: 'Choose how to renew the {n} selected recurring subscriptions (one-time items are skipped):',
+    bulkDeleteTip: 'This will delete the {n} selected subscriptions and cannot be undone. Enter your login password to confirm.',
+    bulkDone: '{n} done', bulkPartial: '{ok} done, {fail} failed'
   },
   calendar: { title: 'Renewal Calendar', noEvents: 'No renewals this month', noEventsDay: 'No renewals on this day', today: 'Today', more: '+{n} more' },
   reports: {
@@ -336,6 +355,7 @@ const en = {
     exportOk: 'Backup downloaded', importOk: 'Imported {n} subscriptions', importFail: 'Import failed: invalid file', notJson: 'Import failed: not a valid JSON backup', httpFail: 'Import failed: server returned {s} {m}', netFail: 'Import failed: cannot reach the server; check the network or reverse proxy'
   },
   backupAll: {
+    passwordLabel: 'Full backup password', passwordHint: 'At least 12 characters. Keep this password separately; it is required to restore the backup.', passwordRequired: 'Automatic backups are paused. Set BACKUP_PASSWORD to at least 12 characters.',
     title: 'Full Site Backup & Restore (Admin)',
     tip: 'Export every member\'s account and data as one JSON file. After a redeploy, import it to restore all users\' subscriptions, categories and more.',
     export: 'Export full backup', import: 'Import full backup', replace: 'Clear each user\'s subscriptions first',
@@ -452,6 +472,8 @@ const ru = {
     pendingTab: 'Ожидают ({n})', allTab: 'Все', noPending: 'Нет ожидающих одобрения'
   },
   auth: {
+    resendSent: 'Если учётная запись не подтверждена, код придёт по почте. Повторная отправка доступна через 60 секунд.',
+    resendCode: 'Отправить код повторно (через 60 секунд)',
     login: 'Вход', register: 'Регистрация', username: 'Логин', email: 'Эл. почта', password: 'Пароль',
     loginBtn: 'Войти', registerBtn: 'Создать', noAccount: 'Нет аккаунта? Регистрация', hasAccount: 'Есть аккаунт? Войти',
     loginFail: 'Неверный логин или пароль', welcome: 'С возвращением',
@@ -493,7 +515,14 @@ const ru = {
     expiredTag: 'Истекло', soonTag: 'Скоро', uncategorized: 'Без категории', dragHint: 'Перетащите карточки для сортировки; заголовок категории — для порядка категорий',
     deleteTitle: 'Удалить подписку', deletePwdTip: 'Во избежание ошибок введите пароль, чтобы удалить «{name}»', pwdPh: 'Пароль',
     remark: 'Заметка', remarkPh: 'напр. основной сервер / HK CN2 (на карточке)',
-    ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6'
+    ipLabel: 'IP-адрес (необязательно)', ipv4: 'IPv4', ipv6: 'IPv6',
+    sortMode: 'Порядок', selectMode: 'Выбрать', done: 'Готово', moveUp: 'Вверх', moveDown: 'Вниз',
+    moveCatUp: 'Переместить категорию «{name}» вверх', moveCatDown: 'Переместить категорию «{name}» вниз', sortHint: 'Меняйте порядок кнопками вверх / вниз; изменения сохраняются сразу',
+    selectOne: 'Выбрать «{name}»', selectedN: 'Выбрано: {n}', selectAll: 'Выбрать все', selectNone: 'Снять выбор',
+    enable: 'Включить', disable: 'Отключить', moveToCat: 'В категорию…',
+    bulkRenewMsg: 'Выберите способ продления для {n} выбранных периодических подписок (разовые покупки пропускаются):',
+    bulkDeleteTip: 'Будут удалены выбранные подписки ({n}) без возможности восстановления. Введите пароль для подтверждения.',
+    bulkDone: 'Готово: {n}', bulkPartial: 'Готово: {ok}, ошибок: {fail}'
   },
   calendar: { title: 'Календарь продлений', noEvents: 'Нет продлений', noEventsDay: 'В этот день продлений нет', today: 'Сегодня', more: '+{n} ещё' },
   reports: {
@@ -522,6 +551,7 @@ const ru = {
     exportOk: 'Файл скачан', importOk: 'Импортировано подписок: {n}', importFail: 'Ошибка импорта: неверный файл', notJson: 'Ошибка импорта: это не JSON-резервная копия', httpFail: 'Ошибка импорта: сервер вернул {s} {m}', netFail: 'Ошибка импорта: сервер недоступен, проверьте сеть или прокси'
   },
   backupAll: {
+    passwordLabel: 'Пароль полной резервной копии', passwordHint: 'Не менее 12 символов. Храните пароль отдельно: он потребуется для восстановления.', passwordRequired: 'Автоматическое копирование приостановлено. Задайте BACKUP_PASSWORD длиной от 12 символов.',
     title: 'Полная резервная копия сайта (админ)',
     tip: 'Экспортируйте аккаунты и данные всех участников в один JSON-файл. После переустановки импортируйте его, чтобы восстановить подписки, категории и т.д. всех пользователей.',
     export: 'Экспорт полной копии', import: 'Импорт полной копии', replace: 'Сначала очистить подписки каждого пользователя',

@@ -9,6 +9,14 @@ from sqlalchemy.engine import Engine
 
 # (表名, 列名, 列定义) —— 仅追加，不删除/改名，确保安全幂等
 _COLUMNS = [
+    ("users", "email_code_sent_at", "DATETIME NULL"),
+    ("users", "auth_version", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "totp_pending_secret", "VARCHAR(64) NULL"),
+    ("users", "reset_code", "VARCHAR(64) NULL"),
+    ("users", "reset_code_expires", "DATETIME NULL"),
+    ("users", "reset_code_sent_at", "DATETIME NULL"),
+    ("users", "reset_code_attempts", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "email_code_attempts", "INTEGER NOT NULL DEFAULT 0"),
     ("subscriptions", "sort", "INT NOT NULL DEFAULT 0"),
     ("subscriptions", "last_renewed_at", "DATE NULL"),
     ("subscriptions", "remark", "VARCHAR(255) NULL"),
@@ -62,6 +70,15 @@ def run_migrations(engine: Engine) -> None:
     if engine is None or not engine.url.get_backend_name().startswith("mysql"):
         return
     with engine.begin() as conn:
+        for table in ("sync_records", "sync_changes", "sync_receipts"):
+            data_type = conn.execute(text(
+                "SELECT DATA_TYPE FROM information_schema.columns "
+                "WHERE table_schema = DATABASE() AND table_name = :t AND column_name = 'payload'"
+            ), {"t": table}).scalar()
+            if data_type and data_type.lower() != "longtext":
+                # Ciphertext grows beyond TEXT even for existing valid subscription notes.
+                conn.execute(text(f"ALTER TABLE `{table}` MODIFY COLUMN `payload` LONGTEXT NOT NULL"))
+                print(f"[migrate] 已扩展 {table}.payload 为 LONGTEXT")
         for table, column, ddl in _COLUMNS:
             try:
                 if not _table_exists(conn, table):

@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     smtp_tls: bool = True
 
+    # Automatic full backups require a separate portable encryption password.
+    backup_password: str = ""
+    outbound_private_allowlist: str = ""
+
     # 首个管理员
     admin_username: str = "admin"
     admin_password: str = "admin123"

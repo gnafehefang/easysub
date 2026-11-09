@@ -1,5 +1,7 @@
 # EasySub · 省心订阅
 
+v2.0.0 增加账号会话撤销、整站加密灾备和通知出站限制；升级前请阅读 [升级说明](https://github.com/suyijun8182/easysub/blob/v2.0.0/docs/update-v2.0.0.md)。自动备份需配置 `BACKUP_PASSWORD`，内网通知需配置 `OUTBOUND_PRIVATE_ALLOWLIST`。
+
 Self-hosted subscription / renewal manager with **14 notification channels** so you never let a subscription — or a SIM keep-alive plan — expire.
 
 自托管的订阅 / 续费 / 保号管理系统，**14 种通知渠道**（Telegram / 飞书 / QQ / Bark / Email / Pushplus / Server酱 / 企业微信 / 钉钉 / Discord / Slack / ntfy / Gotify / Webhook）提醒续费，防止忘记导致过期。
@@ -7,6 +9,7 @@ Self-hosted subscription / renewal manager with **14 notification channels** so 
 - **Source / 源码**: https://github.com/suyijun8182/easysub
 - **Tags**: `latest`, `v*` (per release) — multi-arch `linux/amd64` + `linux/arm64`
 - **GHCR mirror**: `ghcr.io/suyijun8182/easysub:latest`
+- **Changelog / 更新日志**: https://github.com/suyijun8182/easysub/blob/main/CHANGELOG.md
 
 > The image does **not** bundle a database. On first visit a web wizard asks for **your existing MySQL 8** connection.
 > 镜像**不内置数据库**，首次访问网页向导填入你已有的 MySQL 连接即可。
@@ -57,6 +60,7 @@ volumes:
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | Initial admin account created on first init. |
 | `TZ` | Timezone, e.g. `Asia/Shanghai`. |
 | `REMINDER_SCAN_TIME` | Daily scan time for reminders, e.g. `09:00`. |
+| `REQUIRE_ADMIN_APPROVAL` | Require admin approval for new sign-ups. Default `false` (sign up and log in right away). |
 | `TELEGRAM_BOT_TOKEN` | Optional; can also be set in the web UI. |
 | `EXCHANGE_API_BASE` / `EXCHANGE_API_URL` | Exchange-rate source (defaults provided). |
 
@@ -65,6 +69,10 @@ volumes:
 - `/app/data` — DB connection config (`db_config.json`) + uploaded icons. Persist this.
 
 ## Upgrade / 升级
+
+**v1.14.0 / App 同步后端**：建议固定镜像 `suyijun8182/easysub:v1.14.0`。升级前备份 MySQL、原 Compose/.env 和 `/app/data`，保留原 `JWT_SECRET`，不要重新生成。启动会新增四张同步表，数据库账号需要 CREATE/ALTER 权限。
+
+保持原项目、端口、反向代理和数据卷；只更新 app 镜像并重建。`/api/health` 应显示 `version: 1.14.0`、`configured: true`、`sync_protocol: 1`。完整步骤和回滚：[v1.14.0 更新方案](https://github.com/suyijun8182/easysub/blob/main/docs/update-v1.14.0.md)。
 
 Data lives in **your MySQL**; upgrading only swaps the image and is non-destructive.
 数据都在**你自己的 MySQL** 里，升级只换镜像，不会动数据。
@@ -75,7 +83,8 @@ docker compose -f docker-compose.hub.yml pull && docker compose -f docker-compos
 
 # docker run
 docker pull suyijun8182/easysub:latest
-docker rm -f easysub && docker run -d --name easysub ... suyijun8182/easysub:latest   # 保持 -v easysub_data:/app/data 不变
+# 使用原来的环境、网络、端口和挂载配置重建，镜像改为固定版本。
+# 特别保留原 JWT_SECRET 和 /app/data，不要重新运行上方随机生成密钥的首次安装命令。
 ```
 
 NAS 图形界面：重新拉取 `latest` 标签 → 重建容器，保持 `/app/data` 映射与环境变量不变。
@@ -84,9 +93,16 @@ NAS 图形界面：重新拉取 `latest` 标签 → 重建容器，保持 `/app/
 > **升级前建议先备份**：网页 **设置 → 数据备份** 导出 JSON；管理员可用 **整站备份** 导出全部成员数据。
 > Before upgrading, export a backup from **Settings → Data backup** (admins: full-site backup).
 
+## What's new / 最近更新
+
+- **v1.13.0** — Bulk actions on subscriptions (renew / enable / disable / move / delete) and a button-based reorder mode; fixed login errors and the 2FA prompt vanishing on a fresh browser; keyboard & screen-reader fixes across forms and dialogs. 订阅批量操作与按钮排序；修复登录报错不显示、新浏览器下两步验证无法登录；表单与弹窗无障碍改进。
+- **v1.12.1** — Sign-up no longer needs admin approval; set `REQUIRE_ADMIN_APPROVAL=true` to keep it. 注册后直接可用，如需审核设 `REQUIRE_ADMIN_APPROVAL=true`。
+- **v1.12.0** — Full UI redesign: remaining-cycle bar on every card, green / yellow / red expiry states, renewal-timeline dashboard, mobile bottom tab bar. Backup import now shows the real error instead of "invalid file format". 全站 UI 改版；导入备份报错显示真实原因。
+- **v1.11.x** — WeCom self-built app push; fixes for the notification panel disappearing and for deleting subscriptions that had sent reminders. 企业微信自建应用推送；修复通知面板消失与删除订阅报错。
+
 ## Features
 
-Multi-user (JWT, admin/user roles) · recurring & one-time subscriptions · **14 notification channels** (Telegram / Feishu / QQ / Bark / Email / Pushplus / ServerChan / **WeCom — group robot *or* self-built app** / DingTalk / Discord / Slack / ntfy / Gotify / Webhook) with quiet hours & weekly digest · trial / cancel / card-expiry reminders · monthly budget with overspend alert · built-in service library (100s of presets incl. dozens of carriers & eSIM) · multi-language (中/EN/RU) · 6 themes (incl. system-follow) · multi-currency with live FX · dashboard & reports + **CSV export** · Apple-style calendar + **.ics feed** · per-user & **admin full-site** backup/restore + **daily auto-backup** + CSV import/export · **2FA · API tokens · encrypted secrets** · **auto DB reconnect** & auto-migration · **PWA installable** · **in-app update check** · Home Assistant integration.
+Multi-user (JWT, admin/user roles, open sign-up — admin approval optional) · redesigned UI (remaining-cycle bar, renewal timeline, mobile tab bar) · recurring & one-time subscriptions with **bulk actions** and button / drag reordering · keyboard & screen-reader friendly · **14 notification channels** (Telegram / Feishu / QQ / Bark / Email / Pushplus / ServerChan / **WeCom — group robot *or* self-built app** / DingTalk / Discord / Slack / ntfy / Gotify / Webhook) with quiet hours & weekly digest · trial / cancel / card-expiry reminders · monthly budget with overspend alert · built-in service library (100s of presets incl. dozens of carriers & eSIM) · multi-language (中/EN/RU) · 6 themes (incl. system-follow) · multi-currency with live FX · dashboard & reports + **CSV export** · Apple-style calendar + **.ics feed** · per-user & **admin full-site** backup/restore + **daily auto-backup** + CSV import/export · **2FA · API tokens · encrypted secrets** · **auto DB reconnect** & auto-migration · **PWA installable** · **in-app update check** · Home Assistant integration.
 
 ## NAS install guides
 

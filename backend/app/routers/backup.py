@@ -5,17 +5,22 @@
 普通用户只能导出/导入自己的数据；管理员还可整站备份/恢复全部成员的数据。
 """
 from datetime import date, datetime
+import math
+import secrets
+import pyotp
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
+from app.backup_crypto import encrypt_backup, decrypt_backup
 from app import activity
+from app.config import settings
 from app.billing import compute_next_renewal
 from app.database import get_db
 from app.deps import get_admin_user, get_current_user
-from app.models import Bundle, Category, Currency, NotificationLog, PaymentMethod, Subscription, User
+from app.models import Bundle, Category, Currency, ExchangeRate, NotificationLog, PaymentMethod, Subscription, User
 from app.security import hash_password
 from app.services import notify
 
@@ -52,6 +57,11 @@ def _sub_dict(s: Subscription) -> dict:
         "sort": s.sort,
         "family_members": s.family_members,
         "remind_days_before": s.remind_days_before,
+        "trial_end": s.trial_end.isoformat() if s.trial_end else None,
+        "cancel_by": s.cancel_by.isoformat() if s.cancel_by else None,
+        "card_last4": s.card_last4,
+        "card_expiry": s.card_expiry,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
     }
 
 
@@ -64,7 +74,7 @@ def _collect_entities(db: Session, user: User) -> dict:
     恢复端按名称匹配即可正确还原到重新种子化后的系统分类上。
     """
     subs = db.scalars(select(Subscription).where(Subscription.user_id == user.id)).all()
-    used_cat_ids = {s.category_id for s in subs if s.category_id}
+    used_cat_ids = {s.category_id for s in subs if s.category_id} | set(user.category_order or [])
     used_pm_ids = {s.payment_method_id for s in subs if s.payment_method_id}
 
     cats = db.scalars(
@@ -81,6 +91,8 @@ def _collect_entities(db: Session, user: User) -> dict:
     currencies = db.scalars(
         select(Currency).where(Currency.is_custom.is_(True), Currency.user_id == user.id)
     ).all()
+    rate_base = settings.exchange_api_base.upper()
+    rates = db.scalars(select(ExchangeRate).where(ExchangeRate.base == rate_base)).all()
 
     return {
         "categories": [
@@ -99,6 +111,8 @@ def _collect_entities(db: Session, user: User) -> dict:
             {"code": c.code, "name": c.name, "symbol": c.symbol} for c in currencies
         ],
         "subscriptions": [_sub_dict(s) for s in subs],
+        "rate_base": rate_base,
+        "rates": {r.quote: r.rate for r in rates},
     }
 
 
@@ -131,6 +145,10 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
 
     自定义分类/付款方式/捆绑包按名称匹配现有实体（含系统预置），缺失才新建。
     """
+    from app.services.sync import lock_account, reset_generation
+    lock_account(db, user.id)
+    if replace:
+        reset_generation(db, user.id)
     subs_in = data.get("subscriptions") or []
 
     if replace:
@@ -222,6 +240,20 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
     db.flush()
 
     count = 0
+    if data.get("rates"):
+        if data.get("rate_base") != settings.exchange_api_base.upper():
+            raise ValueError("备份汇率基准与服务器不同，请先转换汇率")
+        for code, rate in data["rates"].items():
+            currency = db.get(Currency, code)
+            if not currency or not currency.is_custom or currency.user_id != user.id:
+                continue
+            if not isinstance(rate, (int, float)) or not math.isfinite(rate) or rate <= 0:
+                raise ValueError("备份汇率无效")
+            existing_rate = db.scalar(select(ExchangeRate).where(ExchangeRate.base == data["rate_base"], ExchangeRate.quote == code))
+            if existing_rate:
+                existing_rate.rate = rate
+            else:
+                db.add(ExchangeRate(base=data["rate_base"], quote=code, rate=rate))
     for s in subs_in:
         start = _parse_date(s.get("start_date")) or date.today()
         billing_type = s.get("billing_type", "recurring")
@@ -253,7 +285,13 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
             sort=s.get("sort", 0) or 0,
             family_members=s.get("family_members"),
             remind_days_before=s.get("remind_days_before", "7,6,5,4,3,2,1") or "7,6,5,4,3,2,1",
+            trial_end=_parse_date(s.get("trial_end")),
+            cancel_by=_parse_date(s.get("cancel_by")),
+            card_last4=_s(s.get("card_last4"), 8),
+            card_expiry=_s(s.get("card_expiry"), 7),
         )
+        if s.get("created_at"):
+            sub.created_at = datetime.fromisoformat(s["created_at"])
         if billing_type == "recurring" and not sub.next_renewal_date:
             sub.next_renewal_date = compute_next_renewal(start, sub.cycle, sub.cycle_count)
         if billing_type == "one_time":
@@ -261,6 +299,12 @@ def _restore_entities(db: Session, user: User, data: dict, replace: bool) -> int
         db.add(sub)
         count += 1
 
+    meta = data.get("user") or {}
+    for field in ("monthly_budget", "notify_settings", "base_currency", "locale", "theme"):
+        if field in meta:
+            setattr(user, field, meta[field])
+    if "category_order" in meta:
+        user.category_order = [cat_map[i] for i in meta["category_order"] or [] if i in cat_map]
     return count
 
 
@@ -280,6 +324,9 @@ def export_data(user: User = Depends(get_current_user), db: Session = Depends(ge
             "locale": user.locale,
             "theme": user.theme,
             "notify_config": notify.load_config(user),
+            "monthly_budget": user.monthly_budget,
+            "notify_settings": user.notify_settings,
+            "category_order": user.category_order,
         },
         **_collect_entities(db, user),
     }
@@ -325,6 +372,8 @@ def _user_meta(u: User) -> dict:
         "username": u.username,
         "email": u.email,
         "password_hash": u.password_hash,
+        "totp_enabled": u.totp_enabled,
+        "totp_secret": u.totp_secret,
         "is_admin": u.is_admin,
         "is_active": u.is_active,
         "is_approved": u.is_approved,
@@ -334,6 +383,8 @@ def _user_meta(u: User) -> dict:
         "base_currency": u.base_currency,
         "category_order": u.category_order,
         "notify_config": notify.load_config(u),
+        "monthly_budget": u.monthly_budget,
+        "notify_settings": u.notify_settings,
     }
 
 
@@ -354,21 +405,28 @@ def build_full_backup(db: Session) -> dict:
     }
 
 
-@router.get("/export-all")
-def export_all(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+class BackupPasswordIn(BaseModel):
+    password: str = Field(min_length=12, max_length=1024)
+
+
+@router.post("/export-all")
+def export_all(body: BackupPasswordIn, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
     """管理员：导出全部成员的账户与数据（整站备份）。"""
     payload = build_full_backup(db)
     activity.log(
         "backup.export_all", f"管理员导出整站备份（{len(payload['users'])} 个用户）", user=admin
     )
-    return payload
+    try:
+        return encrypt_backup(payload, body.password)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @router.get("/auto")
 def list_auto_backups(admin: User = Depends(get_admin_user)):
     """管理员：查看服务器本地的每日自动备份文件列表。"""
     from app.services import autobackup  # 延迟导入避免循环
-    return {"dir": autobackup.BACKUP_DIR, "keep": autobackup.KEEP, "files": autobackup.list_backups()}
+    return {"dir": autobackup.BACKUP_DIR, "keep": autobackup.KEEP, "enabled": len(settings.backup_password) >= 12, "files": autobackup.list_backups()}
 
 
 @router.post("/auto/run")
@@ -382,6 +440,7 @@ def run_auto_backup_now(admin: User = Depends(get_admin_user)):
 
 class ImportAllIn(BaseModel):
     data: dict
+    password: str | None = Field(default=None, max_length=1024)
     replace: bool = False  # True：每个用户导入前先清空其现有订阅
 
 
@@ -396,11 +455,29 @@ def import_all(
     按用户名匹配现有账户；账户不存在则用备份中的账户信息（含密码哈希）新建。
     """
     data = payload.data or {}
+    if "format" in data:
+        try:
+            data = decrypt_backup(data, payload.password)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
     users_in = data.get("users")
     if not isinstance(users_in, list):
         raise HTTPException(400, "备份文件格式不正确：缺少 users（请使用整站备份文件）")
 
+    # Validate all authentication material before changing any account.
+    for block in users_in:
+        meta = block.get("user") or {}
+        if meta.get("totp_enabled"):
+            try:
+                pyotp.TOTP(meta["totp_secret"]).now()
+            except Exception:
+                raise HTTPException(400, "备份中的两步验证密钥无效，原数据未更改")
+
     existing_users = {u.username: u for u in db.scalars(select(User)).all()}
+    from app.services.sync import lock_account
+    targets = sorted({existing_users[ub.get("user", {}).get("username")].id for ub in users_in if ub.get("user", {}).get("username") in existing_users})
+    for user_id in targets:
+        lock_account(db, user_id)
     created_users = 0
     total_subs = 0
 
@@ -413,7 +490,7 @@ def import_all(
         target = existing_users.get(username)
         if not target:
             # 新建账户：优先沿用备份的密码哈希，缺失则给一个需重置的占位密码
-            pwd_hash = meta.get("password_hash") or hash_password(username + "@reset")
+            pwd_hash = meta.get("password_hash") or hash_password(secrets.token_urlsafe(32))
             target = User(
                 username=username,
                 email=meta.get("email") or f"{username}@example.com",
@@ -432,6 +509,15 @@ def import_all(
             existing_users[username] = target
             created_users += 1
 
+        lock_account(db, target.id)
+        if "totp_enabled" in meta:
+            target.totp_enabled = bool(meta["totp_enabled"])
+            target.totp_secret = meta.get("totp_secret") if target.totp_enabled else None
+        target.totp_pending_secret = None
+        target.reset_code = None
+        target.email_code = None
+        # Never restore a backed-up session version, even for recreated user IDs.
+        target.auth_version = secrets.randbelow(2**31 - 1) + 1
         # 恢复该用户的通知渠道配置（旧备份无此字段则跳过）
         if isinstance(meta.get("notify_config"), dict):
             notify.apply_config(target, meta["notify_config"])

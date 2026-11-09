@@ -1,0 +1,30 @@
+name: GitHub Release
+
+# Only called after the same commit has passed validation and image verification.
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Publish verified tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git rev-parse --verify "refs/tags/$TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
+          VER="${TAG#v}"
+          awk -v v="## [$VER]" '$0==v{f=1;next} /^## \[/{if(f)exit} f' CHANGELOG.md > notes.md
+          test -s notes.md
+          SUMMARY=$(git tag -l --format='%(contents:subject)' "$TAG")
+          gh release create "$TAG" --title "$TAG · ${SUMMARY:-更新}" --notes-file notes.md --verify-tag

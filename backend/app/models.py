@@ -14,6 +14,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 from app.database import Base
 
@@ -33,6 +34,15 @@ class User(Base):
     is_approved: Mapped[bool] = mapped_column(Boolean, default=True)
     email_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
     email_code_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    auth_version: Mapped[int] = mapped_column(Integer, default=0)
+    totp_pending_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reset_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reset_code_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reset_code_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reset_code_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    email_code_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_code_attempts: Mapped[int] = mapped_column(Integer, default=0)
 
     # 偏好
     locale: Mapped[str] = mapped_column(String(8), default="zh")        # zh | en | ru
@@ -217,3 +227,46 @@ class NotificationLog(Base):
     status: Mapped[str] = mapped_column(String(16))         # sent | failed
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     sent_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class SyncState(Base):
+    __tablename__ = "sync_states"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    epoch: Mapped[str] = mapped_column(String(36))
+    cursor: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SyncRecord(Base):
+    __tablename__ = "sync_records"
+    __table_args__ = (UniqueConstraint("user_id", "kind", "entity_pk", name="uq_sync_entity"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    entity_pk: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    readonly: Mapped[bool] = mapped_column(Boolean, default=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), default="")
+    payload: Mapped[str] = mapped_column(Text().with_variant(LONGTEXT(), "mysql"))
+
+
+class SyncChange(Base):
+    __tablename__ = "sync_changes"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    record_id: Mapped[str] = mapped_column(String(36))
+    kind: Mapped[str] = mapped_column(String(32))
+    version: Mapped[int] = mapped_column(Integer)
+    deleted: Mapped[bool] = mapped_column(Boolean)
+    readonly: Mapped[bool] = mapped_column(Boolean)
+    payload: Mapped[str] = mapped_column(Text().with_variant(LONGTEXT(), "mysql"))
+
+
+class SyncReceipt(Base):
+    __tablename__ = "sync_receipts"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    device_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    operation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[str] = mapped_column(Text().with_variant(LONGTEXT(), "mysql"))

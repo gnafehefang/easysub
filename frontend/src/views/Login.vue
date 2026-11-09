@@ -32,14 +32,14 @@
     <main class="pane">
       <div class="card form">
         <!-- 登录 / 注册 -->
-        <template v-if="step === 'form'">
+        <form v-if="step === 'form'" novalidate @submit.prevent="submit">
           <div class="seg full">
-            <button :class="{ on: mode === 'login' }" @click="mode = 'login'">{{ t('auth.login') }}</button>
-            <button :class="{ on: mode === 'register' }" @click="mode = 'register'">{{ t('auth.register') }}</button>
+            <button type="button" :class="{ on: mode === 'login' }" :aria-pressed="mode === 'login'" @click="mode = 'login'">{{ t('auth.login') }}</button>
+            <button type="button" :class="{ on: mode === 'register' }" :aria-pressed="mode === 'register'" @click="mode = 'register'">{{ t('auth.register') }}</button>
           </div>
 
           <label for="au-user">{{ t('auth.username') }}</label>
-          <input id="au-user" v-model="username" autocomplete="username" @keyup.enter="submit" />
+          <input id="au-user" v-model="username" autocomplete="username" />
 
           <template v-if="mode === 'register'">
             <label for="au-email">{{ t('auth.email') }}</label>
@@ -48,61 +48,63 @@
 
           <label for="au-pwd">{{ t('auth.password') }}</label>
           <input id="au-pwd" v-model="password" type="password"
-            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" @keyup.enter="submit" />
+            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" />
 
           <template v-if="need2fa">
             <label for="au-otp">{{ t('auth.otp') }}</label>
             <input id="au-otp" v-model="otp" class="code" :placeholder="t('auth.otpPh')" maxlength="6"
-              inputmode="numeric" autocomplete="one-time-code" @keyup.enter="submit" />
+              inputmode="numeric" autocomplete="one-time-code" />
           </template>
 
           <p v-if="error" class="note late" role="alert">{{ error }}</p>
           <p v-if="info" class="note ok" role="status">{{ info }}</p>
-          <button class="btn block" :disabled="busy" @click="submit">
+          <button type="submit" class="btn block" :disabled="busy">
             {{ mode === 'login' ? t('auth.loginBtn') : t('auth.registerBtn') }}
           </button>
           <a v-if="mode === 'login'" href="#" class="back" @click.prevent="step = 'forgot'">{{ t('auth.forgot') }}</a>
-        </template>
+        </form>
 
         <!-- 忘记密码：发码 -->
-        <template v-else-if="step === 'forgot'">
+        <form v-else-if="step === 'forgot'" novalidate @submit.prevent="doForgot">
           <h2 class="step-t"><span class="ico" v-html="icon('mail')"></span>{{ t('auth.forgotTitle') }}</h2>
           <p class="hint">{{ t('auth.forgotTip') }}</p>
           <label for="au-femail">{{ t('auth.email') }}</label>
-          <input id="au-femail" v-model="email" type="email" autocomplete="email" @keyup.enter="doForgot" />
+          <input id="au-femail" v-model="email" type="email" autocomplete="email" />
           <p v-if="error" class="note late" role="alert">{{ error }}</p>
           <p v-if="info" class="note ok" role="status">{{ info }}</p>
-          <button class="btn block" :disabled="busy" @click="doForgot">{{ t('auth.sendCode') }}</button>
+          <button type="submit" class="btn block" :disabled="busy">{{ t('auth.sendCode') }}</button>
           <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-        </template>
+        </form>
 
         <!-- 忘记密码：重置 -->
-        <template v-else-if="step === 'reset'">
+        <form v-else-if="step === 'reset'" novalidate @submit.prevent="doReset">
           <h2 class="step-t"><span class="ico" v-html="icon('edit')"></span>{{ t('auth.resetTitle') }}</h2>
           <label for="au-rcode">{{ t('auth.code') }}</label>
           <input id="au-rcode" v-model="code" class="code" :placeholder="t('auth.codePh')" maxlength="6"
             inputmode="numeric" autocomplete="one-time-code" />
           <label for="au-npwd">{{ t('auth.newPassword') }}</label>
-          <input id="au-npwd" v-model="password" type="password" autocomplete="new-password" @keyup.enter="doReset" />
+          <input id="au-npwd" v-model="password" type="password" autocomplete="new-password" />
           <p v-if="error" class="note late" role="alert">{{ error }}</p>
           <p v-if="info" class="note ok" role="status">{{ info }}</p>
-          <button class="btn block" :disabled="busy" @click="doReset">{{ t('auth.resetBtn') }}</button>
+          <button type="submit" class="btn block" :disabled="busy">{{ t('auth.resetBtn') }}</button>
           <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-        </template>
+        </form>
 
         <!-- 邮箱验证码 -->
-        <template v-else-if="step === 'verify'">
+        <form v-else-if="step === 'verify'" novalidate @submit.prevent="doVerify">
           <h2 class="step-t"><span class="ico" v-html="icon('mail')"></span>{{ t('auth.verifyTitle') }}</h2>
           <p class="hint">{{ t('auth.verifyTip', { email }) }}</p>
+          <button type="button" class="btn ghost" @click="resendCode">{{ t('auth.resendCode') }}</button>
           <label for="au-vcode">{{ t('auth.code') }}</label>
           <input id="au-vcode" v-model="code" class="code" :placeholder="t('auth.codePh')" maxlength="6"
-            inputmode="numeric" autocomplete="one-time-code" @keyup.enter="doVerify" />
+            inputmode="numeric" autocomplete="one-time-code" />
+          <p v-if="info" class="note soon" role="status">{{ info }}</p>
           <p v-if="error" class="note late" role="alert">{{ error }}</p>
-          <button class="btn block" :disabled="busy" @click="doVerify">
+          <button type="submit" class="btn block" :disabled="busy">
             {{ t('auth.verifyBtn') }}
           </button>
           <a href="#" class="back" @click.prevent="backToLogin">{{ t('auth.backToLogin') }}</a>
-        </template>
+        </form>
 
         <!-- 等待审核 -->
         <template v-else-if="step === 'pending'">
@@ -115,9 +117,9 @@
       </div>
 
       <div class="lang">
-        <button :class="{ on: locale === 'zh' }" @click="setLang('zh')">中文</button>
-        <button :class="{ on: locale === 'en' }" @click="setLang('en')">EN</button>
-        <button :class="{ on: locale === 'ru' }" @click="setLang('ru')">RU</button>
+        <button :class="{ on: locale === 'zh' }" :aria-pressed="locale === 'zh'" lang="zh" @click="setLang('zh')">中文</button>
+        <button :class="{ on: locale === 'en' }" :aria-pressed="locale === 'en'" lang="en" @click="setLang('en')">EN</button>
+        <button :class="{ on: locale === 'ru' }" :aria-pressed="locale === 'ru'" lang="ru" @click="setLang('ru')">RU</button>
       </div>
     </main>
   </div>
@@ -126,7 +128,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../stores/auth'
 import { icon } from '../icons'
 
@@ -134,8 +136,13 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const auth = useAuth()
 
+async function resendCode() {
+  try { await auth.resendVerification(email.value); error.value = ''; info.value = t('auth.resendSent'); }
+  catch (e) { error.value = e.response?.data?.detail || 'Error' }
+}
+
 const step = ref('form')      // form | verify | pending | forgot | reset
-const mode = ref('login')
+const mode = ref(useRoute().query.mode === 'register' ? 'register' : 'login')
 const username = ref('')
 const email = ref('')
 const password = ref('')
@@ -195,7 +202,9 @@ async function submit() {
     }
   } catch (e) {
     // 需要两步验证：显示 OTP 输入
-    if (e.response?.status === 401 && (e.response?.headers?.['x-2fa-required'] || /两步|2fa|OTP/i.test(e.response?.data?.detail || ''))) {
+    if (e.response?.data?.detail?.code === 'EMAIL_VERIFICATION_REQUIRED') {
+      email.value = e.response.data.detail.email; step.value = 'verify'
+    } else if (e.response?.status === 401 && (e.response?.headers?.['x-2fa-required'] || /两步|2fa|OTP/i.test(e.response?.data?.detail || ''))) {
       need2fa.value = true
       error.value = otp.value ? (e.response?.data?.detail || '') : ''
     } else {

@@ -71,7 +71,8 @@ def update_user(
     admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    user = db.get(User, user_id)
+    from app.services.sync import lock_account
+    user = lock_account(db, user_id)
     if not user:
         raise HTTPException(404, "用户不存在")
 
@@ -94,6 +95,7 @@ def update_user(
             )
     if payload.password:
         user.password_hash = hash_password(payload.password)
+        user.auth_version += 1
     db.commit()
     db.refresh(user)
     return _to_out(db, user)
@@ -103,7 +105,8 @@ def update_user(
 def delete_user(
     user_id: int, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)
 ):
-    user = db.get(User, user_id)
+    from app.services.sync import lock_account
+    user = lock_account(db, user_id)
     if not user:
         raise HTTPException(404, "用户不存在")
     if user.id == admin.id:
